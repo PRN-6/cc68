@@ -2,6 +2,14 @@
 
 All notable changes to the EyeHand (`cc68`) project will be documented in this file.
 
+## [0.2.0] - 2026-11-15 (Milestone M1: Computer Vision & Sensor Pipeline - Task M1.1)
+### Added
+- `@cc68/vision` package initialized with `@mediapipe/tasks-vision` dependency.
+- `VideoStreamManager` implementing robust WebCam stream lifecycle: acquisition, device enumeration, pause/resume, canvas frame capture, and error mapping (`PERMISSION_DENIED`, `NOT_FOUND`, `OVERCONSTRAINED`, `UNSUPPORTED`).
+- `MockStreamGenerator` for rendering synthetic moving eye gaze and hand landmarks on a 60 FPS simulated canvas for headless CI testing and hardware-free environments.
+- Unit test suite for `VideoStreamManager` and `MockStreamGenerator` (16 passing tests across workspace).
+- Interactive Camera Stream Controller in `apps/web` allowing live webcam switching, stream monitoring, and simulated feed preview.
+
 ## [0.1.0] - 2026-11-15 (Milestone M0: Project Foundation)
 ### Added
 - Monorepo structure initialized with `pnpm-workspace.yaml` and strict TypeScript configuration.

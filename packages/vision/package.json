@@ -9,7 +9,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@cc68/core": "workspace:*"
+    "@cc68/core": "workspace:*",
+    "@mediapipe/tasks-vision": "^1.2.3"
   },
   "devDependencies": {
     "typescript": "^5.7.2"

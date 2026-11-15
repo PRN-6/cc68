@@ -8,8 +8,8 @@
 
 | Milestone | Title | Status | Completion Date |
 |---|---|---|---|
-| **M0** | **Project Foundation & Tooling** | **IN PROGRESS (Task M0.1 Done)** | Nov 15, 2026 |
-| **M1** | Computer Vision & Sensor Pipeline | *Pending Approval* | — |
+| **M0** | **Project Foundation & Tooling** | **COMPLETED** | Nov 15, 2026 |
+| **M1** | **Computer Vision & Sensor Pipeline** | **IN PROGRESS (Task M1.1 Done)** | Nov 15, 2026 |
 | **M2** | Gaze Estimation & 9-Point Calibration Engine | *Queued* | — |
 | **M3** | 3D Hand Pose & Spatial Gesture Detection | *Queued* | — |
 | **M4** | Eye-Hand Multimodal Fusion & Interaction | *Queued* | — |
@@ -58,11 +58,14 @@
 
 ---
 
-### Milestone M1: Computer Vision & Sensor Pipeline *(Requires User Approval)*
-- [ ] **Task M1.1: WebCam & Media Stream Abstraction**
-  - [ ] Camera permission handling and error reporting.
-  - [ ] Frame rate regulation and canvas frame grabber.
-  - [ ] Camera device switcher (user front vs external webcam).
+### Milestone M1: Computer Vision & Sensor Pipeline
+- [x] **Task M1.1: WebCam & Media Stream Abstraction**
+  - [x] Camera permission handling and robust error mapping (`CameraError`, `PERMISSION_DENIED`, etc.).
+  - [x] Frame rate regulation, canvas frame grabber (`captureFrame`), and resolution configuration.
+  - [x] Camera device enumeration and switcher (`getDevices`).
+  - [x] Full stream lifecycle controls (`start`, `stop`, `pause`, `resume`, `isStreaming`).
+  - [x] Synthetic mock stream generator for headless/offline testing (`MockStreamGenerator`).
+  - [x] Unit test suite verifying stream lifecycle, device filtering, and error mappings.
 - [ ] **Task M1.2: MediaPipe Face Landmarker & Iris Tracking**
   - [ ] Integrate `@mediapipe/tasks-vision` FaceLandmarker.
   - [ ] Extract 478 3D facial landmarks and 10 iris landmark points (468–477).
