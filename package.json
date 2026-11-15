@@ -1,0 +1,19 @@
+{
+  "name": "cc68-eyehand-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "EyeHand (cc68) — High-Performance Multimodal Gaze & Hand Tracking Interaction Platform",
+  "scripts": {
+    "dev": "pnpm --filter web dev",
+    "build": "pnpm --filter \"@cc68/*\" build && pnpm --filter web build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "clean": "pnpm -r exec rimraf dist"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

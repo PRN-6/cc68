@@ -1,0 +1,17 @@
+{
+  "name": "@cc68/vision",
+  "version": "0.1.0",
+  "description": "Camera capture and MediaPipe vision pipeline abstractions for EyeHand",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@cc68/core": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}
