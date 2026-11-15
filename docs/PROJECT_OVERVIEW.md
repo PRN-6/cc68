@@ -1,9 +1,11 @@
 # EyeHand (cc68) — Project Overview
 
 ## 1. Executive Summary
-**EyeHand (`cc68`)** is a next-generation, browser-native multimodal interaction system that unites real-time **Eye Gaze Tracking** and **3D Hand Gesture Estimation** into a seamless, touchless human-computer interface.
+**EyeHand (`cc68`)** is a next-generation multimodal interaction platform that unites real-time **Eye Gaze Tracking** and **3D Hand Gesture Estimation** into a seamless, touchless human-computer interface.
 
-By decoupling **intentionality / target selection** (governed by where you look) from **action execution** (governed by micro-gestures like a thumb-index pinch), EyeHand implements the spatial computing "Look-and-Pinch" interaction paradigm directly inside standard web browsers without requiring specialized headsets, external hardware, or cloud servers.
+EyeHand is packaged as a lightweight, background **Windows Desktop Application (`EyeHand.exe`)** that docks directly into the **Windows System Tray**, providing system-wide, touchless OS cursor navigation across all Windows applications, documents, and media.
+
+By decoupling **intentionality / target selection** (governed by where you look) from **action execution** (governed by micro-gestures like a thumb-index pinch), EyeHand brings the spatial computing "Look-and-Pinch" paradigm directly to Windows desktops using standard webcams without requiring specialized headsets, external hardware, or cloud servers.
 
 ---
 
@@ -49,12 +51,20 @@ flowchart LR
         UI["Touchless UI Playground"]
     end
 
+    subgraph DESKTOP ["Native Windows Shell (EyeHand.exe)"]
+        TRAY["Windows System Tray\n(NotifyIcon + Menu)"]
+        WIN32["Win32 Input Injection\n(SetCursorPos / mouse_event)"]
+        OS_CURSOR["Global Windows OS Cursor\n(Desktop / Third-Party Apps)"]
+    end
+
     CAM --> FACE & HAND
     SYNTH --> FACE & HAND
     FACE --> CALIB --> EURO
     HAND --> GEST --> EURO
     EURO --> SNAP --> STATE --> DISPATCH --> UI
     DISPATCH --> HUD
+    DISPATCH --> WIN32 --> OS_CURSOR
+    TRAY -. Controls .-> STATE
 ```
 
 ---

@@ -39,5 +39,20 @@
   - `.on<K>(event: K, handler: (data: EventMap[K]) => void): () => void`
   - `.once<K>(event: K, handler: (data: EventMap[K]) => void): () => void`
   - `.emit<K>(event: K, data: EventMap[K]): void`
-  - `.clear(): void`
-  - `.listenerCount(event: K): number`
+### Desktop Mouse Bridge (`DesktopMouseBridge`)
+- `DesktopMouseBridge(baseUrl?: string)`
+  - `.checkAvailability(): Promise<boolean>`: Detects whether `EyeHand.exe` native bridge is listening.
+  - `.moveCursor(x: number, y: number): Promise<void>`: Calls Win32 `SetCursorPos` to position OS cursor.
+  - `.click(button?: 'left' | 'right'): Promise<void>`: Calls Win32 `mouse_event` for click down/up.
+  - `.mouseDown(): Promise<void>`: Calls Win32 `mouse_event(MOUSEEVENTF_LEFTDOWN)`.
+  - `.mouseUp(): Promise<void>`: Calls Win32 `mouse_event(MOUSEEVENTF_LEFTUP)`.
+  - `.getScreenDimensions(): Promise<ScreenDimensions | null>`: Retrieves Windows monitor resolution.
+  - `.isConnected(): boolean`: Returns current connection state.
+
+## Native Windows Executable (`EyeHand.exe`)
+### REST Endpoints (`http://localhost:6868/api`)
+- `GET /api/screen`: Returns `{ "width": int, "height": int, "trayActive": bool }`.
+- `GET /api/mouse/move?x={int}&y={int}`: Dispatches `SetCursorPos(x, y)`.
+- `GET /api/mouse/click?button={left|right}`: Dispatches `mouse_event` click.
+- `GET /api/mouse/down`: Dispatches `mouse_event` down.
+- `GET /api/mouse/up`: Dispatches `mouse_event` up.

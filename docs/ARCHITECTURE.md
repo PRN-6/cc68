@@ -6,6 +6,11 @@ The architecture of EyeHand is divided into four distinct, loosely coupled layer
 
 ```
 ┌────────────────────────────────────────────────────────┐
+│             EyeHand.exe (Windows Executable)           │
+│   (System Tray NotifyIcon + Win32 OS Mouse Injection)  │
+└───────────────────────────┬────────────────────────────┘
+                            │
+┌───────────────────────────┴────────────────────────────┐
 │                      apps/web                          │
 │   (Vite + React 18 + Tailwind + Spatial HUD Canvas)    │
 └───────────────────────────▲────────────────────────────┘
@@ -25,6 +30,12 @@ The architecture of EyeHand is divided into four distinct, loosely coupled layer
 ---
 
 ## 2. Package Responsibilities
+
+### `EyeHand.exe` (Native Windows Shell)
+* **System Tray Resident (`NotifyIcon`)**: Sits unobtrusively in the Windows taskbar notification area.
+* **Background Persistence**: Keeps tracking active when UI dashboard is closed.
+* **Win32 Input Injection**: High-speed native interop invoking `SetCursorPos` and `mouse_event` to control third-party Windows apps, file managers, and desktop games.
+* **Embedded Loopback Server**: Lightweight HTTP endpoint (`localhost:6868`) bridging web tracking events to native OS cursor operations.
 
 ### `@cc68/core`
 * **Zero Dependencies**: Pure TypeScript mathematical and data model library.

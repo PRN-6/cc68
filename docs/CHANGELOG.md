@@ -4,6 +4,11 @@ All notable changes to the EyeHand (`cc68`) project will be documented in this f
 
 ## [0.2.0] - 2026-11-15 (Milestone M1: Computer Vision & Sensor Pipeline - Task M1.1)
 ### Added
+- Standalone native Windows Desktop Executable (`EyeHand.exe`) compiled via `scripts/Launcher.cs` and `build_exe.ps1`.
+- Windows System Tray (`NotifyIcon`) integration: EyeHand docks into the system tray with a glowing custom tray icon, balloon tip alerts, and background execution.
+- System Tray Context Menu: Open EyeHand Dashboard, Toggle Tracking (Active/Paused), Calibrate Gaze, and Exit.
+- Win32 OS-level mouse injection bridge (`SetCursorPos`, `mouse_event`) allowing touchless control over the actual Windows OS cursor outside the browser.
+- `@cc68/core` client `DesktopMouseBridge` class with automated availability detection and screen dimension querying.
 - `@cc68/vision` package initialized with `@mediapipe/tasks-vision` dependency.
 - `VideoStreamManager` implementing robust WebCam stream lifecycle: acquisition, device enumeration, pause/resume, canvas frame capture, and error mapping (`PERMISSION_DENIED`, `NOT_FOUND`, `OVERCONSTRAINED`, `UNSUPPORTED`).
 - `MockStreamGenerator` for rendering synthetic moving eye gaze and hand landmarks on a 60 FPS simulated canvas for headless CI testing and hardware-free environments.

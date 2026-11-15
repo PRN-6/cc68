@@ -25,7 +25,18 @@
    pnpm run typecheck
    ```
 
-4. **Launch Interactive Development Server**:
+4. **Launch Interactive Development Server (Web Mode)**:
    ```bash
    pnpm dev
+   ```
+
+5. **Build and Run Windows Executable (`EyeHand.exe`)**:
+   ```bash
+   # Build the executable
+   .\build_exe.bat
+   # or
+   powershell -ExecutionPolicy Bypass -File .\build_exe.ps1
+
+   # Launch the executable (docks into Windows System Tray)
+   .\EyeHand.exe
    ```

@@ -38,6 +38,12 @@
   - [x] Implement typed event system (`EyeHandEventBus`, `EyeHandEventType`).
   - [x] Author comprehensive unit tests for vectors, One-Euro jitter reduction, and event bus dispatch.
   - [x] Implement Windows OS mouse bridge (`DesktopMouseBridge`) for Win32 cursor positioning and clicking via `EyeHand.exe`.
+- [x] **Task M0.5: Native Windows Executable & System Tray Shell (`EyeHand.exe`)**
+  - [x] Implement native C# launcher with Win32 `SetCursorPos` and `mouse_event` API bridge (`scripts/Launcher.cs`).
+  - [x] Integrate Windows System Tray (`NotifyIcon`) with dynamic active/paused icon rendering.
+  - [x] Implement System Tray context menu (Open Dashboard, Toggle Tracking, Calibrate Gaze, Exit).
+  - [x] Configure background persistence (application continues tracking in tray when dashboard is closed).
+  - [x] Create one-click automated build scripts (`build_exe.ps1` and `build_exe.bat`).
 - [x] **Task M0.3: Documentation & Specification Framework**
   - [x] Create `MASTER_TASK_CHECKLIST.md`.
   - [x] Create `PROJECT_OVERVIEW.md`.
