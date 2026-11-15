@@ -4,3 +4,4 @@ export * from './math';
 export * from './filters';
 export * from './types';
 export * from './events';
+export * from './desktop';

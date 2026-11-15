@@ -37,3 +37,4 @@ export class CameraError extends Error {
     this.name = 'CameraError';
   }
 }
+

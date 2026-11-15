@@ -37,6 +37,7 @@
   - [x] Define gesture taxonomy types (Pinch, Grab, Open Palm, Point, Swipes).
   - [x] Implement typed event system (`EyeHandEventBus`, `EyeHandEventType`).
   - [x] Author comprehensive unit tests for vectors, One-Euro jitter reduction, and event bus dispatch.
+  - [x] Implement Windows OS mouse bridge (`DesktopMouseBridge`) for Win32 cursor positioning and clicking via `EyeHand.exe`.
 - [x] **Task M0.3: Documentation & Specification Framework**
   - [x] Create `MASTER_TASK_CHECKLIST.md`.
   - [x] Create `PROJECT_OVERVIEW.md`.

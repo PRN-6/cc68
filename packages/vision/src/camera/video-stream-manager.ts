@@ -214,3 +214,4 @@ export class VideoStreamManager {
     return new CameraError(code, message, err);
   }
 }
+

@@ -111,3 +111,4 @@ describe('MockStreamGenerator', () => {
     expect(generator.createMediaStream()).toBeNull();
   });
 });
+
