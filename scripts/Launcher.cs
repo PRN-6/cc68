@@ -6,11 +6,13 @@ using System.Text;
 using System.Threading;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 
 [assembly: AssemblyTitle("EyeHand (cc68)")]
 [assembly: AssemblyProduct("EyeHand Spatial Desktop")]
-[assembly: AssemblyDescription("High-Performance Multimodal Gaze & Hand Tracking Desktop Interaction")]
+[assembly: AssemblyDescription("High-Performance Multimodal Gaze & Hand Tracking System Tray Desktop Application")]
 [assembly: AssemblyCompany("EyeHand")]
 [assembly: AssemblyVersion("1.0.0.0")]
 [assembly: AssemblyFileVersion("1.0.0.0")]
@@ -21,6 +23,9 @@ namespace EyeHand
     {
         private static HttpListener listener;
         private static bool isRunning = true;
+        private static bool isTrackingActive = true;
+        private static NotifyIcon trayIcon;
+        private static Process appWindowProcess;
         private const int Port = 6868;
 
         // Win32 API for OS Cursor and Mouse Input Control
@@ -30,16 +35,20 @@ namespace EyeHand
         [DllImport("user32.dll")]
         private static extern void mouse_event(uint dwFlags, uint dx, uint dy, uint dwData, int dwExtraInfo);
 
+        [DllImport("user32.dll")]
+        private static extern bool SetForegroundWindow(IntPtr hWnd);
+
         private const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
         private const uint MOUSEEVENTF_LEFTUP = 0x0004;
         private const uint MOUSEEVENTF_RIGHTDOWN = 0x0008;
         private const uint MOUSEEVENTF_RIGHTUP = 0x0010;
-        private const uint MOUSEEVENTF_MIDDLEDOWN = 0x0020;
-        private const uint MOUSEEVENTF_MIDDLEUP = 0x0040;
 
         [STAThread]
         static void Main()
         {
+            Application.EnableVisualStyles();
+            Application.SetCompatibleTextRenderingDefault(false);
+
             string appDir = AppDomain.CurrentDomain.BaseDirectory;
             string distDir = Path.Combine(appDir, "apps", "web", "dist");
             if (!Directory.Exists(distDir))
@@ -50,11 +59,105 @@ namespace EyeHand
             // 1. Start Win32 Input API & Embedded Web Server
             StartHttpServer(distDir);
 
-            // 2. Launch Native Window
+            // 2. Setup System Tray Icon & Context Menu
+            SetupSystemTray();
+
+            // 3. Launch UI Window on startup
             LaunchAppWindow();
 
-            // 3. Cleanup on exit
+            // 4. Run WinForms message loop to keep System Tray active
+            Application.Run();
+
+            // 5. Cleanup on exit
             Cleanup();
+        }
+
+        static void SetupSystemTray()
+        {
+            trayIcon = new NotifyIcon();
+            trayIcon.Text = "EyeHand (cc68) - Multimodal Tracking";
+            trayIcon.Icon = CreateTrayIcon(true);
+            trayIcon.Visible = true;
+
+            ContextMenu menu = new ContextMenu();
+
+            MenuItem openItem = new MenuItem("Open EyeHand Dashboard", (s, e) => LaunchAppWindow());
+            openItem.DefaultItem = true; // Bold font, triggered on double-click
+            menu.MenuItems.Add(openItem);
+
+            menu.MenuItems.Add("-");
+
+            MenuItem toggleItem = new MenuItem("Tracking: Active");
+            toggleItem.Click += (s, e) =>
+            {
+                isTrackingActive = !isTrackingActive;
+                toggleItem.Text = isTrackingActive ? "Tracking: Active" : "Tracking: Paused";
+                trayIcon.Icon = CreateTrayIcon(isTrackingActive);
+                trayIcon.ShowBalloonTip(
+                    1500,
+                    "EyeHand Tracking",
+                    isTrackingActive ? "Eye & Hand tracking resumed." : "Eye & Hand tracking paused.",
+                    ToolTipIcon.Info
+                );
+            };
+            menu.MenuItems.Add(toggleItem);
+
+            menu.MenuItems.Add(new MenuItem("Calibrate Gaze", (s, e) => {
+                LaunchAppWindow();
+            }));
+
+            menu.MenuItems.Add("-");
+
+            menu.MenuItems.Add(new MenuItem("Exit EyeHand", (s, e) =>
+            {
+                trayIcon.Visible = false;
+                Cleanup();
+                Application.Exit();
+            }));
+
+            trayIcon.ContextMenu = menu;
+            trayIcon.DoubleClick += (s, e) => LaunchAppWindow();
+
+            // Show startup notification in tray
+            trayIcon.ShowBalloonTip(
+                2000,
+                "EyeHand is Running",
+                "EyeHand is active in your system tray. Click to view dashboard.",
+                ToolTipIcon.Info
+            );
+        }
+
+        static Icon CreateTrayIcon(bool active)
+        {
+            using (Bitmap bmp = new Bitmap(32, 32))
+            using (Graphics g = Graphics.FromImage(bmp))
+            {
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.Clear(Color.Transparent);
+
+                // Eye outer contour
+                Color eyeColor = active ? Color.FromArgb(56, 189, 248) : Color.FromArgb(148, 163, 184);
+                using (Pen pen = new Pen(eyeColor, 2.5f))
+                {
+                    g.DrawEllipse(pen, 2, 7, 28, 18);
+                }
+
+                // Iris circle
+                Color irisColor = active ? Color.FromArgb(34, 197, 94) : Color.FromArgb(100, 116, 139);
+                using (SolidBrush brush = new SolidBrush(irisColor))
+                {
+                    g.FillEllipse(brush, 10, 10, 12, 12);
+                }
+
+                // Pupil highlight
+                using (SolidBrush whiteBrush = new SolidBrush(Color.White))
+                {
+                    g.FillEllipse(whiteBrush, 14, 12, 4, 4);
+                }
+
+                IntPtr hIcon = bmp.GetHicon();
+                return Icon.FromHandle(hIcon);
+            }
         }
 
         static void StartHttpServer(string distDir)
@@ -96,7 +199,6 @@ namespace EyeHand
             {
                 string path = ctx.Request.Url.AbsolutePath.ToLowerInvariant();
 
-                // CORS Headers
                 ctx.Response.AddHeader("Access-Control-Allow-Origin", "*");
                 ctx.Response.AddHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
                 ctx.Response.AddHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -111,35 +213,47 @@ namespace EyeHand
                 // Win32 OS Cursor Control API Endpoints
                 if (path == "/api/mouse/move")
                 {
-                    int x = int.Parse(ctx.Request.QueryString["x"] ?? "0");
-                    int y = int.Parse(ctx.Request.QueryString["y"] ?? "0");
-                    SetCursorPos(x, y);
-                    SendJson(ctx, "{\"status\":\"ok\",\"x\":" + x + ",\"y\":" + y + "}");
+                    if (isTrackingActive)
+                    {
+                        int x = int.Parse(ctx.Request.QueryString["x"] ?? "0");
+                        int y = int.Parse(ctx.Request.QueryString["y"] ?? "0");
+                        SetCursorPos(x, y);
+                    }
+                    SendJson(ctx, "{\"status\":\"ok\",\"active\":" + (isTrackingActive ? "true" : "false") + "}");
                     return;
                 }
                 else if (path == "/api/mouse/click")
                 {
-                    string button = ctx.Request.QueryString["button"] ?? "left";
-                    if (button == "right")
+                    if (isTrackingActive)
                     {
-                        mouse_event(MOUSEEVENTF_RIGHTDOWN | MOUSEEVENTF_RIGHTUP, 0, 0, 0, 0);
-                    }
-                    else
-                    {
-                        mouse_event(MOUSEEVENTF_LEFTDOWN | MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+                        string button = ctx.Request.QueryString["button"] ?? "left";
+                        if (button == "right")
+                        {
+                            mouse_event(MOUSEEVENTF_RIGHTDOWN | MOUSEEVENTF_RIGHTUP, 0, 0, 0, 0);
+                        }
+                        else
+                        {
+                            mouse_event(MOUSEEVENTF_LEFTDOWN | MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+                        }
                     }
                     SendJson(ctx, "{\"status\":\"ok\",\"action\":\"click\"}");
                     return;
                 }
                 else if (path == "/api/mouse/down")
                 {
-                    mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+                    if (isTrackingActive)
+                    {
+                        mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+                    }
                     SendJson(ctx, "{\"status\":\"ok\",\"action\":\"down\"}");
                     return;
                 }
                 else if (path == "/api/mouse/up")
                 {
-                    mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+                    if (isTrackingActive)
+                    {
+                        mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+                    }
                     SendJson(ctx, "{\"status\":\"ok\",\"action\":\"up\"}");
                     return;
                 }
@@ -147,7 +261,7 @@ namespace EyeHand
                 {
                     int screenWidth = Screen.PrimaryScreen.Bounds.Width;
                     int screenHeight = Screen.PrimaryScreen.Bounds.Height;
-                    SendJson(ctx, "{\"width\":" + screenWidth + ",\"height\":" + screenHeight + "}");
+                    SendJson(ctx, "{\"width\":" + screenWidth + ",\"height\":" + screenHeight + ",\"trayActive\":true}");
                     return;
                 }
 
@@ -202,38 +316,48 @@ namespace EyeHand
 
         static void LaunchAppWindow()
         {
-            string url = "http://localhost:" + Port;
-            string edgePath = @"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe";
-            if (!File.Exists(edgePath))
+            try
             {
-                edgePath = @"C:\Program Files\Microsoft\Edge\Application\msedge.exe";
-            }
-
-            string dataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EyeHand68", "AppData");
-
-            ProcessStartInfo psi;
-            if (File.Exists(edgePath))
-            {
-                psi = new ProcessStartInfo
+                if (appWindowProcess != null && !appWindowProcess.HasExited)
                 {
-                    FileName = edgePath,
-                    Arguments = "--app=\"" + url + "\" --window-size=1280,800 --user-data-dir=\"" + dataDir + "\"",
-                    UseShellExecute = false
-                };
-            }
-            else
-            {
-                psi = new ProcessStartInfo
-                {
-                    FileName = url,
-                    UseShellExecute = true
-                };
-            }
+                    // If already running, bring window to front
+                    SetForegroundWindow(appWindowProcess.MainWindowHandle);
+                    return;
+                }
 
-            Process appProc = Process.Start(psi);
-            if (appProc != null)
+                string url = "http://localhost:" + Port;
+                string edgePath = @"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe";
+                if (!File.Exists(edgePath))
+                {
+                    edgePath = @"C:\Program Files\Microsoft\Edge\Application\msedge.exe";
+                }
+
+                string dataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EyeHand68", "AppData");
+
+                ProcessStartInfo psi;
+                if (File.Exists(edgePath))
+                {
+                    psi = new ProcessStartInfo
+                    {
+                        FileName = edgePath,
+                        Arguments = "--app=\"" + url + "\" --window-size=1280,800 --user-data-dir=\"" + dataDir + "\"",
+                        UseShellExecute = false
+                    };
+                }
+                else
+                {
+                    psi = new ProcessStartInfo
+                    {
+                        FileName = url,
+                        UseShellExecute = true
+                    };
+                }
+
+                appWindowProcess = Process.Start(psi);
+            }
+            catch (Exception ex)
             {
-                appProc.WaitForExit();
+                Console.WriteLine("Failed to launch UI: " + ex.Message);
             }
         }
 
@@ -242,10 +366,29 @@ namespace EyeHand
             isRunning = false;
             try
             {
+                if (trayIcon != null)
+                {
+                    trayIcon.Visible = false;
+                    trayIcon.Dispose();
+                }
+            }
+            catch { }
+
+            try
+            {
                 if (listener != null && listener.IsListening)
                 {
                     listener.Stop();
                     listener.Close();
+                }
+            }
+            catch { }
+
+            try
+            {
+                if (appWindowProcess != null && !appWindowProcess.HasExited)
+                {
+                    appWindowProcess.Kill();
                 }
             }
             catch { }

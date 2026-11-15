@@ -95,3 +95,4 @@ export class DesktopMouseBridge {
     return this.isAvailable === true;
   }
 }
+
