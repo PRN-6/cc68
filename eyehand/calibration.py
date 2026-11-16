@@ -73,9 +73,7 @@ class GazeCalibrator:
 
                 frame = cv2.flip(frame, 1)
                 rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                now_ms = int((time.time() - start_time) * 1000)
-
-                feat = tracker.process_frame(rgb_frame, now_ms)
+                feat = tracker.process_frame(rgb_frame)
                 if feat is not None:
                     # Ignore first 0.35s to allow eyes to settle
                     if (time.time() - dwell_start) > 0.35:

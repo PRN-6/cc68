@@ -126,3 +126,4 @@ class FigmaCursorOverlay:
             self.root.destroy()
         except Exception:
             pass
+

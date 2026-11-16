@@ -26,6 +26,7 @@ CALIB_FILE = os.path.join(BASE_DIR, "gaze_calibration.npy")
 SCREEN_W, SCREEN_H = pyautogui.size()
 
 def main():
+    app_start_time = time.time()
     print("=" * 65)
     print("  EyeHand (cc68) - Gaze & Eye Cursor System")
     print(f"  Windows Screen: {SCREEN_W}x{SCREEN_H}")
@@ -87,7 +88,6 @@ def main():
     print("  [ESC/Q] - Exit EyeHand")
     print("=" * 65 + "\n")
 
-    start_time = time.time()
     cv2.namedWindow("EyeHand Camera Feed", cv2.WINDOW_AUTOSIZE)
 
     try:
@@ -99,7 +99,7 @@ def main():
             frame = cv2.flip(frame, 1)
             h, w = frame.shape[:2]
             now = time.time()
-            now_ms = int((now - start_time) * 1000)
+            now_ms = int((now - app_start_time) * 1000)
 
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             features = tracker.process_frame(rgb_frame, now_ms)

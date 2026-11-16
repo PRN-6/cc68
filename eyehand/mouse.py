@@ -60,3 +60,4 @@ class MouseController:
             self.blink_start_time = None
 
         return False
+

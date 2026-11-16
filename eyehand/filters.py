@@ -129,3 +129,4 @@ class GazeDwellController:
         self.candidate_start_time = None
         self.dwell_progress = 0.0
         self.outlier_count = 0
+

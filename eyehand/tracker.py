@@ -55,14 +55,32 @@ class EyeTracker:
         )
         self.landmarker = vision.FaceLandmarker.create_from_options(options)
         self.anchor_nose = None
+        self._last_timestamp_ms = 0
 
-    def process_frame(self, frame_bgr, timestamp_ms: int):
+    def process_frame(self, frame_bgr, timestamp_ms: int = None):
         """
         Processes a single video frame and extracts pure eye and nose gaze features.
+        Guarantees strictly monotonically increasing timestamps for MediaPipe.
         """
+        # Ensure timestamp is strictly monotonically increasing across application lifetime
+        if timestamp_ms is None or timestamp_ms <= self._last_timestamp_ms:
+            self._last_timestamp_ms += 1
+            valid_ts = self._last_timestamp_ms
+        else:
+            self._last_timestamp_ms = timestamp_ms
+            valid_ts = timestamp_ms
+
         h, w = frame_bgr.shape[:2]
         rgb = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame_bgr)
-        result = self.landmarker.detect_for_video(rgb, timestamp_ms)
+        try:
+            result = self.landmarker.detect_for_video(rgb, valid_ts)
+        except Exception:
+            # Safe fallback recovery if any internal timestamp boundary condition occurs
+            self._last_timestamp_ms += 1
+            try:
+                result = self.landmarker.detect_for_video(rgb, self._last_timestamp_ms)
+            except Exception:
+                return None
 
         if not result.face_landmarks:
             return None
