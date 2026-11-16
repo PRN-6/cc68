@@ -12,7 +12,7 @@ using System.Windows.Forms;
 
 [assembly: AssemblyTitle("EyeHand (cc68)")]
 [assembly: AssemblyProduct("EyeHand Spatial Desktop")]
-[assembly: AssemblyDescription("High-Performance Multimodal Gaze & Hand Tracking System Tray Desktop Application")]
+[assembly: AssemblyDescription("High-Performance Multimodal Gaze & Hand Tracking System Tray Desktop Application with Custom Windows Cursor Overlay")]
 [assembly: AssemblyCompany("EyeHand")]
 [assembly: AssemblyVersion("1.0.0.0")]
 [assembly: AssemblyFileVersion("1.0.0.0")]
@@ -26,6 +26,7 @@ namespace EyeHand
         private static bool isTrackingActive = true;
         private static NotifyIcon trayIcon;
         private static Process appWindowProcess;
+        private static CustomCursorOverlay customCursor;
         private const int Port = 6868;
 
         // Win32 API for OS Cursor and Mouse Input Control
@@ -56,26 +57,30 @@ namespace EyeHand
                 distDir = Path.Combine(appDir, "dist");
             }
 
-            // 1. Start Win32 Input API & Embedded Web Server
+            // 1. Create and display the dedicated Custom Windows Cursor Overlay
+            customCursor = new CustomCursorOverlay();
+            customCursor.Show();
+
+            // 2. Start Win32 Input API & Embedded Web Server
             StartHttpServer(distDir);
 
-            // 2. Setup System Tray Icon & Context Menu
+            // 3. Setup System Tray Icon & Context Menu
             SetupSystemTray();
 
-            // 3. Launch UI Window on startup
+            // 4. Launch UI Window on startup
             LaunchAppWindow();
 
-            // 4. Run WinForms message loop to keep System Tray active
+            // 5. Run WinForms message loop to keep System Tray and Overlay active
             Application.Run();
 
-            // 5. Cleanup on exit
+            // 6. Cleanup on exit
             Cleanup();
         }
 
         static void SetupSystemTray()
         {
             trayIcon = new NotifyIcon();
-            trayIcon.Text = "EyeHand (cc68) - Multimodal Tracking";
+            trayIcon.Text = "EyeHand (cc68) - Custom Cursor Active";
             trayIcon.Icon = CreateTrayIcon(true);
             trayIcon.Visible = true;
 
@@ -93,6 +98,10 @@ namespace EyeHand
                 isTrackingActive = !isTrackingActive;
                 toggleItem.Text = isTrackingActive ? "Tracking: Active" : "Tracking: Paused";
                 trayIcon.Icon = CreateTrayIcon(isTrackingActive);
+                if (customCursor != null)
+                {
+                    customCursor.SetVisibility(isTrackingActive && customCursor.IsOverlayVisible);
+                }
                 trayIcon.ShowBalloonTip(
                     1500,
                     "EyeHand Tracking",
@@ -101,6 +110,24 @@ namespace EyeHand
                 );
             };
             menu.MenuItems.Add(toggleItem);
+
+            MenuItem cursorOverlayItem = new MenuItem("Custom Windows Cursor: Visible");
+            cursorOverlayItem.Click += (s, e) =>
+            {
+                if (customCursor != null)
+                {
+                    bool nextVis = !customCursor.IsOverlayVisible;
+                    customCursor.SetVisibility(nextVis);
+                    cursorOverlayItem.Text = nextVis ? "Custom Windows Cursor: Visible" : "Custom Windows Cursor: Hidden";
+                    trayIcon.ShowBalloonTip(
+                        1200,
+                        "Custom Cursor Overlay",
+                        nextVis ? "Separate Windows cursor overlay is now visible." : "Separate Windows cursor overlay is now hidden.",
+                        ToolTipIcon.Info
+                    );
+                }
+            };
+            menu.MenuItems.Add(cursorOverlayItem);
 
             menu.MenuItems.Add(new MenuItem("Calibrate Gaze", (s, e) => {
                 LaunchAppWindow();
@@ -122,7 +149,7 @@ namespace EyeHand
             trayIcon.ShowBalloonTip(
                 2000,
                 "EyeHand is Running",
-                "EyeHand is active in your system tray. Click to view dashboard.",
+                "EyeHand custom desktop cursor is active in your system tray.",
                 ToolTipIcon.Info
             );
         }
@@ -210,23 +237,68 @@ namespace EyeHand
                     return;
                 }
 
-                // Win32 OS Cursor Control API Endpoints
+                // 1. Move Custom Windows Cursor & optionally OS cursor
                 if (path == "/api/mouse/move")
                 {
                     if (isTrackingActive)
                     {
                         int x = int.Parse(ctx.Request.QueryString["x"] ?? "0");
                         int y = int.Parse(ctx.Request.QueryString["y"] ?? "0");
-                        SetCursorPos(x, y);
+                        bool pinch = (ctx.Request.QueryString["pinch"] == "true" || ctx.Request.QueryString["pinch"] == "1");
+                        string syncParam = ctx.Request.QueryString["syncOs"];
+                        bool syncOs = (syncParam == "1" || syncParam == "true");
+
+                        if (customCursor != null)
+                        {
+                            customCursor.UpdatePosition(x, y, pinch, syncOs);
+                        }
+                        else if (syncOs)
+                        {
+                            SetCursorPos(x, y);
+                        }
                     }
                     SendJson(ctx, "{\"status\":\"ok\",\"active\":" + (isTrackingActive ? "true" : "false") + "}");
                     return;
                 }
+                // 2. Custom Cursor Overlay Visibility Toggle
+                else if (path == "/api/cursor/overlay")
+                {
+                    string visParam = ctx.Request.QueryString["visible"];
+                    if (visParam != null && customCursor != null)
+                    {
+                        bool show = (visParam == "true" || visParam == "1");
+                        customCursor.SetVisibility(show);
+                    }
+                    bool isVis = customCursor != null && customCursor.IsOverlayVisible;
+                    SendJson(ctx, "{\"status\":\"ok\",\"visible\":" + (isVis ? "true" : "false") + "}");
+                    return;
+                }
+                // 3. Custom Cursor Configuration (style, size, color)
+                else if (path == "/api/cursor/config")
+                {
+                    if (customCursor != null)
+                    {
+                        string style = ctx.Request.QueryString["style"];
+                        string sizeStr = ctx.Request.QueryString["size"];
+                        string color = ctx.Request.QueryString["color"];
+                        int sz;
+                        if (int.TryParse(sizeStr, out sz)) customCursor.SetSize(sz);
+                        if (!string.IsNullOrEmpty(style)) customCursor.SetStyle(style);
+                        if (!string.IsNullOrEmpty(color)) customCursor.SetColor(color);
+                    }
+                    SendJson(ctx, "{\"status\":\"ok\"}");
+                    return;
+                }
+                // 4. OS Mouse Click (clicks at Custom Cursor's position)
                 else if (path == "/api/mouse/click")
                 {
                     if (isTrackingActive)
                     {
                         string button = ctx.Request.QueryString["button"] ?? "left";
+                        if (customCursor != null)
+                        {
+                            SetCursorPos(customCursor.CursorX, customCursor.CursorY);
+                        }
                         if (button == "right")
                         {
                             mouse_event(MOUSEEVENTF_RIGHTDOWN | MOUSEEVENTF_RIGHTUP, 0, 0, 0, 0);
@@ -239,29 +311,41 @@ namespace EyeHand
                     SendJson(ctx, "{\"status\":\"ok\",\"action\":\"click\"}");
                     return;
                 }
+                // 5. Mouse Down (e.g. pinch start / drag start)
                 else if (path == "/api/mouse/down")
                 {
                     if (isTrackingActive)
                     {
+                        if (customCursor != null)
+                        {
+                            SetCursorPos(customCursor.CursorX, customCursor.CursorY);
+                        }
                         mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
                     }
                     SendJson(ctx, "{\"status\":\"ok\",\"action\":\"down\"}");
                     return;
                 }
+                // 6. Mouse Up (e.g. pinch release / drag end)
                 else if (path == "/api/mouse/up")
                 {
                     if (isTrackingActive)
                     {
+                        if (customCursor != null)
+                        {
+                            SetCursorPos(customCursor.CursorX, customCursor.CursorY);
+                        }
                         mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
                     }
                     SendJson(ctx, "{\"status\":\"ok\",\"action\":\"up\"}");
                     return;
                 }
+                // 7. Screen Dimensions & Overlay State
                 else if (path == "/api/screen")
                 {
                     int screenWidth = Screen.PrimaryScreen.Bounds.Width;
                     int screenHeight = Screen.PrimaryScreen.Bounds.Height;
-                    SendJson(ctx, "{\"width\":" + screenWidth + ",\"height\":" + screenHeight + ",\"trayActive\":true}");
+                    bool overlayVis = customCursor != null && customCursor.IsOverlayVisible;
+                    SendJson(ctx, "{\"width\":" + screenWidth + ",\"height\":" + screenHeight + ",\"trayActive\":true,\"customCursorActive\":" + (overlayVis ? "true" : "false") + "}");
                     return;
                 }
 
@@ -320,7 +404,6 @@ namespace EyeHand
             {
                 if (appWindowProcess != null && !appWindowProcess.HasExited)
                 {
-                    // If already running, bring window to front
                     SetForegroundWindow(appWindowProcess.MainWindowHandle);
                     return;
                 }
@@ -340,7 +423,7 @@ namespace EyeHand
                     psi = new ProcessStartInfo
                     {
                         FileName = edgePath,
-                        Arguments = "--app=\"" + url + "\" --window-size=1280,800 --user-data-dir=\"" + dataDir + "\"",
+                        Arguments = "--app=\"" + url + "\" --window-size=1300,860 --user-data-dir=\"" + dataDir + "\"",
                         UseShellExecute = false
                     };
                 }
@@ -364,6 +447,15 @@ namespace EyeHand
         static void Cleanup()
         {
             isRunning = false;
+            try
+            {
+                if (customCursor != null && !customCursor.IsDisposed)
+                {
+                    customCursor.Dispose();
+                }
+            }
+            catch { }
+
             try
             {
                 if (trayIcon != null)
@@ -392,6 +484,314 @@ namespace EyeHand
                 }
             }
             catch { }
+        }
+    }
+
+    /// <summary>
+    /// Dedicated Custom Floating Cursor Overlay that displays directly on Windows.
+    /// Transparent, click-through, always-on-top, and does not steal window focus.
+    /// </summary>
+    public class CustomCursorOverlay : Form
+    {
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+
+        [DllImport("user32.dll")]
+        private static extern bool SetCursorPos(int X, int Y);
+
+        private static readonly IntPtr HWND_TOPMOST = new IntPtr(-1);
+        private const uint SWP_NOSIZE = 0x0001;
+        private const uint SWP_NOACTIVATE = 0x0010;
+        private const uint SWP_SHOWWINDOW = 0x0040;
+        private const uint SWP_HIDEWINDOW = 0x0080;
+
+        public int CursorX { get; private set; }
+        public int CursorY { get; private set; }
+        public bool IsOverlayVisible { get; private set; }
+
+        private bool isPinching;
+        private int cursorSize;
+        private string cursorStyle;
+        private Color primaryColor;
+        private Color pinchColor;
+        private float pulsePhase;
+        private System.Windows.Forms.Timer animTimer;
+
+        public CustomCursorOverlay()
+        {
+            CursorX = Screen.PrimaryScreen.Bounds.Width / 2;
+            CursorY = Screen.PrimaryScreen.Bounds.Height / 2;
+            IsOverlayVisible = true;
+            isPinching = false;
+            cursorSize = 68;
+            cursorStyle = "reticle";
+            primaryColor = Color.FromArgb(56, 189, 248); // Electric Sky Blue
+            pinchColor = Color.FromArgb(34, 197, 94);     // Emerald Green
+            pulsePhase = 0f;
+
+            this.FormBorderStyle = FormBorderStyle.None;
+            this.ShowInTaskbar = false;
+            this.TopMost = true;
+            this.StartPosition = FormStartPosition.Manual;
+            this.Size = new Size(cursorSize, cursorSize);
+            this.Location = new Point(CursorX - cursorSize / 2, CursorY - cursorSize / 2);
+            this.BackColor = Color.Magenta;
+            this.TransparencyKey = Color.Magenta;
+            this.DoubleBuffered = true;
+
+            // Idle pulse animation timer (~40 FPS)
+            animTimer = new System.Windows.Forms.Timer();
+            animTimer.Interval = 25;
+            animTimer.Tick += (s, e) =>
+            {
+                pulsePhase += 0.08f;
+                if (this.IsOverlayVisible && this.IsHandleCreated && !this.IsDisposed)
+                {
+                    this.Invalidate();
+                }
+            };
+            animTimer.Start();
+        }
+
+        protected override CreateParams CreateParams
+        {
+            get
+            {
+                CreateParams cp = base.CreateParams;
+                // WS_EX_TRANSPARENT (0x20): All mouse clicks pass directly through to underlying Windows apps
+                // WS_EX_LAYERED (0x80000): Layered window transparency
+                // WS_EX_TOOLWINDOW (0x80): Hide from Alt-Tab
+                // WS_EX_NOACTIVATE (0x08000000): Never steal keyboard or window focus
+                cp.ExStyle |= 0x00000020 | 0x00080000 | 0x00000080 | 0x08000000;
+                return cp;
+            }
+        }
+
+        protected override bool ShowWithoutActivation
+        {
+            get { return true; }
+        }
+
+        public void UpdatePosition(int x, int y, bool pinching, bool syncOs)
+        {
+            CursorX = x;
+            CursorY = y;
+
+            if (syncOs)
+            {
+                SetCursorPos(x, y);
+            }
+
+            if (this.IsHandleCreated && !this.IsDisposed && this.IsOverlayVisible)
+            {
+                int targetLeft = x - cursorSize / 2;
+                int targetTop = y - cursorSize / 2;
+                SetWindowPos(this.Handle, HWND_TOPMOST, targetLeft, targetTop, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE);
+
+                if (pinching != isPinching)
+                {
+                    isPinching = pinching;
+                    if (this.InvokeRequired)
+                    {
+                        this.BeginInvoke(new Action(() => this.Invalidate()));
+                    }
+                    else
+                    {
+                        this.Invalidate();
+                    }
+                }
+            }
+        }
+
+        public void SetVisibility(bool visible)
+        {
+            IsOverlayVisible = visible;
+            if (this.InvokeRequired)
+            {
+                this.BeginInvoke(new Action(() =>
+                {
+                    this.Visible = visible;
+                    if (visible)
+                    {
+                        SetWindowPos(this.Handle, HWND_TOPMOST, CursorX - cursorSize / 2, CursorY - cursorSize / 2, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+                    }
+                }));
+            }
+            else
+            {
+                this.Visible = visible;
+                if (visible)
+                {
+                    SetWindowPos(this.Handle, HWND_TOPMOST, CursorX - cursorSize / 2, CursorY - cursorSize / 2, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+                }
+            }
+        }
+
+        public void SetSize(int size)
+        {
+            if (size < 32) size = 32;
+            if (size > 140) size = 140;
+            cursorSize = size;
+            if (this.InvokeRequired)
+            {
+                this.BeginInvoke(new Action(() =>
+                {
+                    this.Size = new Size(cursorSize, cursorSize);
+                    this.Invalidate();
+                }));
+            }
+            else
+            {
+                this.Size = new Size(cursorSize, cursorSize);
+                this.Invalidate();
+            }
+        }
+
+        public void SetStyle(string style)
+        {
+            cursorStyle = style.ToLowerInvariant();
+            if (this.InvokeRequired)
+            {
+                this.BeginInvoke(new Action(() => this.Invalidate()));
+            }
+            else
+            {
+                this.Invalidate();
+            }
+        }
+
+        public void SetColor(string hex)
+        {
+            try
+            {
+                if (hex.StartsWith("#")) hex = hex.Substring(1);
+                if (hex.Length == 6)
+                {
+                    int r = Convert.ToInt32(hex.Substring(0, 2), 16);
+                    int g = Convert.ToInt32(hex.Substring(2, 2), 16);
+                    int b = Convert.ToInt32(hex.Substring(4, 2), 16);
+                    primaryColor = Color.FromArgb(r, g, b);
+                }
+            }
+            catch { }
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            base.OnPaint(e);
+            Graphics g = e.Graphics;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+
+            int cx = cursorSize / 2;
+            int cy = cursorSize / 2;
+
+            if (cursorStyle == "dot")
+            {
+                // Minimalist Precision Laser Dot
+                Color dotColor = isPinching ? pinchColor : primaryColor;
+                using (SolidBrush glow = new SolidBrush(Color.FromArgb(90, dotColor)))
+                {
+                    g.FillEllipse(glow, cx - 12, cy - 12, 24, 24);
+                }
+                using (SolidBrush dot = new SolidBrush(dotColor))
+                {
+                    g.FillEllipse(dot, cx - 5, cy - 5, 10, 10);
+                }
+                using (SolidBrush core = new SolidBrush(Color.White))
+                {
+                    g.FillEllipse(core, cx - 2, cy - 2, 4, 4);
+                }
+                return;
+            }
+
+            if (cursorStyle == "crosshair")
+            {
+                // Tactical Gaze Crosshair
+                Color chColor = isPinching ? pinchColor : primaryColor;
+                using (Pen pen = new Pen(chColor, 2.0f))
+                {
+                    int arm = cursorSize / 3;
+                    g.DrawLine(pen, cx - arm, cy, cx - 4, cy);
+                    g.DrawLine(pen, cx + 4, cy, cx + arm, cy);
+                    g.DrawLine(pen, cx, cy - arm, cx, cy - 4);
+                    g.DrawLine(pen, cx, cy + 4, cx, cy + arm);
+                    g.DrawEllipse(pen, cx - 8, cy - 8, 16, 16);
+                }
+                using (SolidBrush core = new SolidBrush(Color.White))
+                {
+                    g.FillEllipse(core, cx - 2, cy - 2, 4, 4);
+                }
+                return;
+            }
+
+            // Default: "reticle" - Spatial Holographic Gaze Reticle
+            if (isPinching)
+            {
+                // Pinch / Click Active: contracted ring + energy pulse ripple
+                int r = (int)(cursorSize * 0.28f);
+
+                // Expanding ripple
+                float rip = (float)(Math.Sin(pulsePhase * 3.5) * 0.5 + 0.5);
+                int ripR = r + (int)(rip * 14);
+                int ripAlpha = (int)((1.0f - rip) * 180);
+                if (ripAlpha > 0)
+                {
+                    using (Pen ripPen = new Pen(Color.FromArgb(ripAlpha, pinchColor), 2.0f))
+                    {
+                        g.DrawEllipse(ripPen, cx - ripR, cy - ripR, ripR * 2, ripR * 2);
+                    }
+                }
+
+                // Inner contracted ring
+                using (Pen pen = new Pen(pinchColor, 3.0f))
+                {
+                    g.DrawEllipse(pen, cx - r, cy - r, r * 2, r * 2);
+                }
+
+                // Solid tactile grip dot
+                using (SolidBrush brush = new SolidBrush(pinchColor))
+                {
+                    g.FillEllipse(brush, cx - 6, cy - 6, 12, 12);
+                }
+                using (SolidBrush centerDot = new SolidBrush(Color.White))
+                {
+                    g.FillEllipse(centerDot, cx - 2, cy - 2, 4, 4);
+                }
+            }
+            else
+            {
+                // Resting Gaze: Smooth breathing cyan reticle
+                float pulse = (float)(Math.Sin(pulsePhase) * 1.5);
+                int r = (int)(cursorSize * 0.32f + pulse);
+
+                // Soft outer halo glow
+                using (Pen glowPen = new Pen(Color.FromArgb(50, primaryColor), 4.5f))
+                {
+                    g.DrawEllipse(glowPen, cx - r, cy - r, r * 2, r * 2);
+                }
+
+                // Crisp primary ring
+                using (Pen pen = new Pen(primaryColor, 2.2f))
+                {
+                    g.DrawEllipse(pen, cx - r, cy - r, r * 2, r * 2);
+                }
+
+                // Crosshair tick marks around ring
+                using (Pen tickPen = new Pen(Color.FromArgb(220, primaryColor), 1.8f))
+                {
+                    g.DrawLine(tickPen, cx, cy - r - 4, cx, cy - r + 3);
+                    g.DrawLine(tickPen, cx, cy + r - 3, cx, cy + r + 4);
+                    g.DrawLine(tickPen, cx - r - 4, cy, cx - r + 3, cy);
+                    g.DrawLine(tickPen, cx + r - 3, cy, cx + r + 4, cy);
+                }
+
+                // Precision center aiming dot
+                using (SolidBrush dot = new SolidBrush(Color.White))
+                {
+                    g.FillEllipse(dot, cx - 2, cy - 2, 4, 4);
+                }
+            }
         }
     }
 }

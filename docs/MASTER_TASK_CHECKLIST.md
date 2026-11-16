@@ -40,8 +40,10 @@
   - [x] Implement Windows OS mouse bridge (`DesktopMouseBridge`) for Win32 cursor positioning and clicking via `EyeHand.exe`.
 - [x] **Task M0.5: Native Windows Executable & System Tray Shell (`EyeHand.exe`)**
   - [x] Implement native C# launcher with Win32 `SetCursorPos` and `mouse_event` API bridge (`scripts/Launcher.cs`).
+  - [x] Implement dedicated Custom Windows Cursor Overlay (`CustomCursorOverlay`) floating on top of all Windows applications (`WS_EX_TRANSPARENT | WS_EX_LAYERED | WS_EX_NOACTIVATE | WS_EX_TOPMOST`).
+  - [x] Support multiple custom cursor styles (Spatial Hologram Reticle, Laser Dot, Tactical Crosshair) with dynamic pinch ripple feedback.
   - [x] Integrate Windows System Tray (`NotifyIcon`) with dynamic active/paused icon rendering.
-  - [x] Implement System Tray context menu (Open Dashboard, Toggle Tracking, Calibrate Gaze, Exit).
+  - [x] Implement System Tray context menu (Open Dashboard, Toggle Tracking, Custom Cursor Toggle, Calibrate Gaze, Exit).
   - [x] Configure background persistence (application continues tracking in tray when dashboard is closed).
   - [x] Create one-click automated build scripts (`build_exe.ps1` and `build_exe.bat`).
 - [x] **Task M0.3: Documentation & Specification Framework**

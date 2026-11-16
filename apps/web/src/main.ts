@@ -17,7 +17,7 @@ if (app) {
     <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 900px; margin: 1.5rem auto; padding: 2rem; background: #0f172a; border-radius: 12px; color: #f8fafc; border: 1px solid #1e293b; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);">
       <header style="margin-bottom: 1.5rem; text-align: center;">
         <h1 style="font-size: 2.2rem; margin: 0 0 0.5rem 0; color: #38bdf8; letter-spacing: -0.5px;">EyeHand (cc68)</h1>
-        <p style="color: #94a3b8; margin: 0; font-size: 1rem;">Multimodal Gaze & 3D Hand Tracking Windows Desktop Controller</p>
+        <p style="color: #94a3b8; margin: 0; font-size: 1rem;">Dedicated Windows Custom Cursor & Multimodal Gaze/Hand Controller</p>
         <div style="margin-top: 0.75rem; display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap;">
           <span style="background: #1e293b; padding: 3px 10px; border-radius: 6px; font-size: 0.8rem; color: #38bdf8;">Core v${CORE_VERSION}</span>
           <span style="background: #1e293b; padding: 3px 10px; border-radius: 6px; font-size: 0.8rem; color: #4ade80;">Vision v${VISION_VERSION}</span>
@@ -26,30 +26,59 @@ if (app) {
       </header>
 
       <div style="display: grid; grid-template-columns: 1fr; gap: 1.25rem;">
-        <!-- Windows Native Mouse Injection Controller -->
+        <!-- Windows Native Mouse & Custom Cursor Controller -->
         <div style="background: #020617; border-radius: 8px; padding: 1.25rem; border: 1px solid #1e293b;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
             <div style="display: flex; align-items: center; gap: 0.5rem;">
-              <span style="font-size: 1.2rem;">🖱️</span>
-              <h2 style="font-size: 1.1rem; margin: 0; color: #f8fafc;">Windows OS Mouse Cursor Control</h2>
+              <span style="font-size: 1.2rem;">🎯</span>
+              <h2 style="font-size: 1.1rem; margin: 0; color: #f8fafc;">Windows Custom Cursor & Input Bridge</h2>
             </div>
-            <span id="screen-res-badge" style="font-size: 0.8rem; color: #64748b; background: #0f172a; padding: 2px 8px; border-radius: 4px;">Detecting Screen...</span>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+              <span id="overlay-status-badge" style="font-size: 0.8rem; color: #4ade80; background: #064e3b; padding: 2px 8px; border-radius: 4px; border: 1px solid #059669;">Custom Cursor Active</span>
+              <span id="screen-res-badge" style="font-size: 0.8rem; color: #64748b; background: #0f172a; padding: 2px 8px; border-radius: 4px;">Detecting Screen...</span>
+            </div>
           </div>
           
-          <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.5rem;">
-            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; background: #1e293b; padding: 8px 14px; border-radius: 6px; font-size: 0.9rem; color: #38bdf8; font-weight: 600; border: 1px solid #334155; user-select: none;">
-              <input type="checkbox" id="chk-live-cursor" style="cursor: pointer; width: 18px; height: 18px; accent-color: #38bdf8;" />
-              <span>Enable Live OS Cursor Control</span>
+          <!-- Mode Toggles -->
+          <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.75rem;">
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; background: #1e293b; padding: 8px 14px; border-radius: 6px; font-size: 0.85rem; color: #38bdf8; font-weight: 600; border: 1px solid #334155; user-select: none;">
+              <input type="checkbox" id="chk-custom-cursor" checked style="cursor: pointer; width: 18px; height: 18px; accent-color: #38bdf8;" />
+              <span>Show Custom Windows Cursor Overlay</span>
             </label>
-            <button id="btn-test-cursor" style="background: #334155; color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 500;">
-              Center Cursor
-            </button>
-            <button id="btn-test-click" style="background: #334155; color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 500;">
-              Test Left Click
-            </button>
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; background: #1e293b; padding: 8px 14px; border-radius: 6px; font-size: 0.85rem; color: #94a3b8; font-weight: 500; border: 1px solid #334155; user-select: none;">
+              <input type="checkbox" id="chk-sync-real-mouse" style="cursor: pointer; width: 18px; height: 18px; accent-color: #38bdf8;" />
+              <span>Sync Real OS Mouse Pointer</span>
+            </label>
           </div>
-          <div id="bridge-helper-note" style="font-size: 0.8rem; color: #94a3b8; margin-top: 0.5rem;">
-            💡 <em>When EyeHand.exe runs, it docks into your Windows System Tray (notification overflow menu) and enables OS-level cursor driving.</em>
+
+          <!-- Style & Size Controls -->
+          <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; padding-top: 0.5rem; border-top: 1px solid #1e293b;">
+            <span style="font-size: 0.8rem; color: #94a3b8;">Cursor Style:</span>
+            <select id="sel-cursor-style" style="background: #1e293b; color: #f8fafc; border: 1px solid #334155; padding: 5px 10px; border-radius: 5px; font-size: 0.85rem; cursor: pointer;">
+              <option value="reticle" selected>Spatial Hologram Reticle</option>
+              <option value="dot">Precision Laser Dot</option>
+              <option value="crosshair">Tactical Crosshair</option>
+            </select>
+
+            <span style="font-size: 0.8rem; color: #94a3b8; margin-left: 0.5rem;">Size:</span>
+            <div style="display: flex; gap: 0.25rem;">
+              <button class="btn-sz" data-sz="48" style="background: #1e293b; color: #cbd5e1; border: 1px solid #334155; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer;">Small</button>
+              <button class="btn-sz" data-sz="68" style="background: #0284c7; color: white; border: 1px solid #38bdf8; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer; font-weight: bold;">Medium</button>
+              <button class="btn-sz" data-sz="96" style="background: #1e293b; color: #cbd5e1; border: 1px solid #334155; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer;">Large</button>
+            </div>
+
+            <div style="margin-left: auto; display: flex; gap: 0.5rem;">
+              <button id="btn-test-cursor" style="background: #334155; color: white; border: none; padding: 6px 12px; border-radius: 5px; cursor: pointer; font-size: 0.8rem;">
+                Center Cursor
+              </button>
+              <button id="btn-test-click" style="background: #334155; color: white; border: none; padding: 6px 12px; border-radius: 5px; cursor: pointer; font-size: 0.8rem;">
+                Test Click
+              </button>
+            </div>
+          </div>
+
+          <div id="bridge-helper-note" style="font-size: 0.8rem; color: #94a3b8; margin-top: 0.6rem;">
+            💡 <em>Your custom cursor floats transparently on top of all Windows apps without stealing focus. Pinching triggers physical clicks at its exact location!</em>
           </div>
         </div>
 
@@ -68,7 +97,7 @@ if (app) {
               Click <strong style="color: #38bdf8;">"Start Webcam"</strong> to use your real camera, or <strong style="color: #0d9488;">"Start Simulator"</strong> to test hands-free.
             </div>
             
-            <!-- Real-time Visual Gaze Reticle -->
+            <!-- Real-time Visual Gaze Reticle in Viewport -->
             <div id="gaze-reticle" style="position: absolute; width: 32px; height: 32px; border: 2.5px solid #38bdf8; border-radius: 50%; pointer-events: none; transform: translate(-50%, -50%); display: none; box-shadow: 0 0 14px rgba(56, 189, 248, 0.7); z-index: 20; transition: border-color 0.1s, transform 0.05s ease-out;">
               <div style="position: absolute; top: 50%; left: 50%; width: 6px; height: 6px; background: #38bdf8; border-radius: 50%; transform: translate(-50%, -50%);"></div>
             </div>
@@ -157,9 +186,12 @@ if (app) {
   const statusBadge = document.getElementById('stream-status') as HTMLSpanElement;
   const bridgeBadge = document.getElementById('bridge-status-badge') as HTMLSpanElement;
   const screenBadge = document.getElementById('screen-res-badge') as HTMLSpanElement;
+  const overlayBadge = document.getElementById('overlay-status-badge') as HTMLSpanElement;
   const logEl = document.getElementById('camera-log') as HTMLDivElement;
 
-  const chkLiveCursor = document.getElementById('chk-live-cursor') as HTMLInputElement;
+  const chkCustomCursor = document.getElementById('chk-custom-cursor') as HTMLInputElement;
+  const chkSyncRealMouse = document.getElementById('chk-sync-real-mouse') as HTMLInputElement;
+  const selCursorStyle = document.getElementById('sel-cursor-style') as HTMLSelectElement;
   const btnStartCamera = document.getElementById('btn-start-camera') as HTMLButtonElement;
   const btnStartSim = document.getElementById('btn-start-sim') as HTMLButtonElement;
   const btnStop = document.getElementById('btn-stop') as HTMLButtonElement;
@@ -227,26 +259,27 @@ if (app) {
     }
   };
 
-  // Dispatch coordinates to OS-level mouse cursor via Win32 bridge
+  // Dispatch coordinates to OS-level Custom Windows Cursor Overlay & Win32 bridge
   const dispatchLivePointer = async (normX: number, normY: number, isPinch: boolean, timestamp: number) => {
-    // Clamp to valid [0, 1] bounds
     const clampedX = Math.max(0, Math.min(1, normX));
     const clampedY = Math.max(0, Math.min(1, normY));
 
-    // Update the visual viewport reticle
+    // Update the in-viewport visual reticle
     updateReticle(clampedX, clampedY, isPinch);
 
-    // If live cursor is enabled and EyeHand.exe Win32 bridge is active, drive OS cursor
-    if (chkLiveCursor && chkLiveCursor.checked && isConnectedToNative) {
+    if (isConnectedToNative) {
       const rawTargetX = clampedX * screenDims.width;
       const rawTargetY = clampedY * screenDims.height;
       const filtered = cursorFilter.filter(new Vector2(rawTargetX, rawTargetY), timestamp);
 
       if (!isDispatchingMove) {
         isDispatchingMove = true;
-        mouseBridge.moveCursor(filtered.x, filtered.y).finally(() => {
-          isDispatchingMove = false;
-        });
+        const syncOs = chkSyncRealMouse ? chkSyncRealMouse.checked : false;
+        mouseBridge
+          .moveCursor(filtered.x, filtered.y, { pinch: isPinch, syncOs })
+          .finally(() => {
+            isDispatchingMove = false;
+          });
       }
 
       // Handle pinch click / drag state transitions
@@ -275,6 +308,10 @@ if (app) {
         if (dim) {
           screenDims = dim;
           screenBadge.textContent = `Windows Display: ${dim.width}x${dim.height}px`;
+          if (dim.customCursorActive !== undefined) {
+            overlayBadge.textContent = dim.customCursorActive ? 'Custom Cursor Active' : 'Custom Cursor Hidden';
+            overlayBadge.style.backgroundColor = dim.customCursorActive ? '#064e3b' : '#334155';
+          }
         }
         log('Connected to EyeHand.exe Win32 desktop mouse engine in System Tray.');
       } else {
@@ -282,6 +319,8 @@ if (app) {
         bridgeBadge.style.color = '#94a3b8';
         bridgeBadge.style.borderColor = '#334155';
         screenBadge.textContent = `Browser Viewport: ${window.innerWidth}x${window.innerHeight}px`;
+        overlayBadge.textContent = 'Custom Cursor Offline';
+        overlayBadge.style.backgroundColor = '#334155';
       }
     }
   };
@@ -289,16 +328,52 @@ if (app) {
   checkBridge();
   setInterval(checkBridge, 2000);
 
+  // Toggle Custom Cursor Overlay Visibility
+  chkCustomCursor.addEventListener('change', async () => {
+    const vis = await mouseBridge.setCustomCursorVisible(chkCustomCursor.checked);
+    overlayBadge.textContent = vis ? 'Custom Cursor Active' : 'Custom Cursor Hidden';
+    overlayBadge.style.backgroundColor = vis ? '#064e3b' : '#334155';
+    log(`Custom Windows Cursor visibility set to ${vis}.`);
+  });
+
+  // Change Cursor Style
+  selCursorStyle.addEventListener('change', async () => {
+    const style = selCursorStyle.value as 'reticle' | 'dot' | 'crosshair';
+    await mouseBridge.configureCustomCursor({ style });
+    log(`Custom cursor style changed to: ${style}`);
+  });
+
+  // Change Cursor Size
+  document.querySelectorAll('.btn-sz').forEach((btn) => {
+    btn.addEventListener('click', async (e) => {
+      document.querySelectorAll('.btn-sz').forEach((b) => {
+        (b as HTMLElement).style.background = '#1e293b';
+        (b as HTMLElement).style.color = '#cbd5e1';
+        (b as HTMLElement).style.borderColor = '#334155';
+        (b as HTMLElement).style.fontWeight = 'normal';
+      });
+      const target = e.currentTarget as HTMLElement;
+      target.style.background = '#0284c7';
+      target.style.color = 'white';
+      target.style.borderColor = '#38bdf8';
+      target.style.fontWeight = 'bold';
+
+      const sz = parseInt(target.getAttribute('data-sz') || '68', 10);
+      await mouseBridge.configureCustomCursor({ size: sz });
+      log(`Custom cursor size changed to: ${sz}px`);
+    });
+  });
+
   btnTestCursor.addEventListener('click', async () => {
     const cx = screenDims.width / 2;
     const cy = screenDims.height / 2;
-    await mouseBridge.moveCursor(cx, cy);
-    log(`Dispatched OS cursor move to center (${cx}, ${cy}).`);
+    await mouseBridge.moveCursor(cx, cy, { syncOs: chkSyncRealMouse.checked });
+    log(`Dispatched Custom Cursor move to center (${cx}, ${cy}).`);
   });
 
   btnTestClick.addEventListener('click', async () => {
     await mouseBridge.click('left');
-    log('Dispatched OS left click event.');
+    log('Dispatched OS left click event at Custom Cursor position.');
   });
 
   btnStartCamera.addEventListener('click', async () => {
@@ -340,7 +415,6 @@ if (app) {
           if (faceSummary) {
             updateFaceTelemetry(faceSummary);
             // Normalized iris displacement [-1, 1] mapped to normalized screen [0, 1]
-            // Note: Camera feed is mirrored, so horizontal displacement is inverted for screen mapping
             const irisOffset = EyeGeometry.calculateNormalizedIrisOffset(faceSummary.leftEye);
             const normX = 0.5 - irisOffset.x * 0.75;
             const normY = 0.5 + irisOffset.y * 0.75;
@@ -410,7 +484,7 @@ if (app) {
       gestureNameVal.textContent = isPinch ? 'PINCH' : 'OPEN PALM';
       pinchPointVal.textContent = `(${handX.toFixed(2)}, ${handY.toFixed(2)})`;
 
-      // Dispatch live pointer to drive reticle and OS mouse cursor
+      // Dispatch live pointer to drive custom Windows cursor & reticle
       dispatchLivePointer(eyeX, eyeY, isPinch, performance.now());
 
       simTimer = requestAnimationFrame(tick);

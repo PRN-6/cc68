@@ -2,6 +2,29 @@
 
 All notable changes to the EyeHand (`cc68`) project will be documented in this file.
 
+## [0.7.0] - 2026-11-16 (Dedicated Custom Windows Cursor Overlay)
+### Added
+- **`CustomCursorOverlay` Win32 Native Desktop Overlay Window**: A dedicated, floating, always-on-top, click-through (`WS_EX_TRANSPARENT | WS_EX_LAYERED | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW`) holographic cursor rendered directly on Windows desktop.
+- **Three Selectable Cursor Styles**:
+  1. *Spatial Hologram Reticle*: Dual-ring electric cyan reticle with animated breathing pulse, crosshair tick marks, and precision focal dot.
+  2. *Precision Laser Dot*: Minimalist glowing laser point for high-precision pointing.
+  3. *Tactical Crosshair*: Clean precision crosshairs with focal center.
+- **Tactile Visual Pinch & Click Feedback**:
+  - Ring contracts to tactile grip size on pinch.
+  - Shifts color dynamically from electric sky blue (`#38bdf8`) to vibrant emerald green (`#22c55e`).
+  - Animated expanding ripple energy pulse indicating active click or drag state.
+- **Independent Targeting & OS Mouse Decoupling**:
+  - The custom cursor can glide freely across the entire Windows desktop without altering the user's physical mouse pointer.
+  - Optional toggle `"Sync Real OS Mouse Pointer"` allows moving both simultaneously.
+  - Pinch-clicks automatically target the exact desktop location of the custom cursor.
+- **Desktop System Tray Controls**:
+  - Right-click tray menu toggle: `"Custom Windows Cursor: Visible / Hidden"`.
+  - HTTP endpoints: `/api/cursor/overlay?visible={1|0}`, `/api/cursor/config?style={...}&size={...}&color={...}`.
+- **Web Dashboard Controls**:
+  - Custom Cursor toggle, OS Mouse sync toggle, Style dropdown, and Size buttons (Small 48px, Medium 68px, Large 96px).
+- **Core Library Extension**:
+  - Added `moveCustomCursor`, `setCustomCursorVisible`, and `configureCustomCursor` to `DesktopMouseBridge` with full unit test coverage (36 passing tests).
+
 ## [0.6.0] - 2026-11-16 (Live Windows OS Cursor Driving & System Tray Integration)
 ### Added
 - Real-time continuous OS mouse cursor driving loop connecting iris gaze coordinates and synthetic simulations directly to `DesktopMouseBridge`.
