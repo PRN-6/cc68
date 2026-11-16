@@ -21,6 +21,8 @@ namespace EyeHand
 {
     static class Program
     {
+        private static Mutex singleInstanceMutex;
+        private const string MutexName = "Local\\EyeHand_cc68_SingleInstance_Mutex";
         private static HttpListener listener;
         private static bool isRunning = true;
         private static bool isTrackingActive = true;
@@ -40,13 +42,10 @@ namespace EyeHand
         [DllImport("user32.dll")]
         private static extern bool SetForegroundWindow(IntPtr hWnd);
 
-        [DllImport("kernel32.dll")]
-        private static extern IntPtr GetConsoleWindow();
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool AttachConsole(int dwProcessId);
+        private const int ATTACH_PARENT_PROCESS = -1;
 
-        [DllImport("user32.dll")]
-        private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
-
-        private const int SW_HIDE = 0;
         private const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
         private const uint MOUSEEVENTF_LEFTUP = 0x0004;
         private const uint MOUSEEVENTF_RIGHTDOWN = 0x0008;
@@ -55,15 +54,38 @@ namespace EyeHand
         [STAThread]
         static void Main()
         {
+            // 0. Single-Instance Guard: Prevent multiple instances competing for port 6868 and cursor overlay
+            bool isNewInstance;
             try
             {
-                // Silently hide console window immediately on launch
-                IntPtr consoleWnd = GetConsoleWindow();
-                if (consoleWnd != IntPtr.Zero)
-                {
-                    ShowWindow(consoleWnd, SW_HIDE);
-                }
+                singleInstanceMutex = new Mutex(true, MutexName, out isNewInstance);
+            }
+            catch
+            {
+                isNewInstance = true;
+            }
 
+            if (!isNewInstance)
+            {
+                // EyeHand is already running! Notify user in terminal if attached, open viewport and exit cleanly.
+                try
+                {
+                    AttachConsole(ATTACH_PARENT_PROCESS);
+                    Console.WriteLine("\n[EyeHand] EyeHand is already running in your Windows System Tray (Port 6868).");
+                    Console.WriteLine("[EyeHand] Opening Settings & Camera Viewport in your browser...\n");
+                }
+                catch { }
+
+                try
+                {
+                    Process.Start("http://localhost:" + Port);
+                }
+                catch { }
+                return;
+            }
+
+            try
+            {
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
 
@@ -455,7 +477,7 @@ namespace EyeHand
                 ProcessStartInfo psi = new ProcessStartInfo
                 {
                     FileName = edgePath,
-                    Arguments = "--headless=new --use-fake-ui-for-media-stream --autoplay-policy=no-user-gesture-required --no-first-run --no-default-browser-check --disable-features=msFirstRunExperience --disable-fre --user-data-dir=\"" + dataDir + "\" \"" + url + "\"",
+                    Arguments = "--headless=new --use-fake-ui-for-media-stream --autoplay-policy=no-user-gesture-required --no-first-run --no-default-browser-check --disable-search-engine-choice-screen --disable-features=msFirstRunExperience,msEdgeEnableNurturing,msEdgeWelcomePage --disable-fre --user-data-dir=\"" + dataDir + "\" \"" + url + "\"",
                     WindowStyle = ProcessWindowStyle.Hidden,
                     CreateNoWindow = true,
                     UseShellExecute = false
@@ -564,6 +586,17 @@ namespace EyeHand
                 if (appWindowProcess != null && !appWindowProcess.HasExited)
                 {
                     appWindowProcess.Kill();
+                }
+            }
+            catch { }
+
+            try
+            {
+                if (singleInstanceMutex != null)
+                {
+                    singleInstanceMutex.ReleaseMutex();
+                    singleInstanceMutex.Dispose();
+                    singleInstanceMutex = null;
                 }
             }
             catch { }

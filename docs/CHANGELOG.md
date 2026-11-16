@@ -2,6 +2,18 @@
 
 All notable changes to the EyeHand (`cc68`) project will be documented in this file.
 
+## [0.14.1] - 2026-11-16 (Single-Instance Mutex & Port 6868 Socket Conflict Resolution)
+### Fixed
+- **Single-Instance Mutex Guard (`scripts/Launcher.cs`)**:
+  - Implemented named system mutex (`Local\EyeHand_cc68_SingleInstance_Mutex`) to eliminate socket conflict errors when `EyeHand.exe` is launched multiple times.
+  - Secondary launches gracefully detect the active instance, print a helpful notification to the console terminal, open the Settings & Camera Viewport (`http://localhost:6868`) in the browser, and exit with code 0.
+  - Safely releases and disposes the mutex on application exit in `Cleanup()`.
+- **Console Terminal Safety**:
+  - Eliminated dangerous `ShowWindow(GetConsoleWindow(), SW_HIDE)` call which hid the user's PowerShell/command terminal on launch.
+  - Added `AttachConsole(ATTACH_PARENT_PROCESS)` for friendly terminal feedback without creating unwanted console windows.
+- **Edge Headless Command-Line Robustness**:
+  - Added `--disable-search-engine-choice-screen`, `--disable-features=msFirstRunExperience,msEdgeEnableNurturing,msEdgeWelcomePage` to prevent any Microsoft First-Run / Privacy prompts from appearing.
+
 ## [0.14.0] - 2026-11-16 (Iconic Multiplayer Figma Cursor Style)
 ### Added
 - **Default Figma Cursor Design (`CustomCursorOverlay`)**:
@@ -27,6 +39,29 @@ All notable changes to the EyeHand (`cc68`) project will be documented in this f
   - Guarantees natural eye glances and subtle nose shifts reach **100% of all 4 borders (0.0 to 1.0)** and corners effortlessly.
 - Rebuilt production bundle and redeployed daemon engine.
 
+## [0.13.1] - 2026-11-16 (Edge Dwell Jitter Immunity & Full Screen Reach Calibration)
+### Added
+- **Edge Dwell Jitter Immunity Buffer (`GazeDwellController`)**:
+  - Expanded `stareRadiusPixels` from 75px to **120px** to comfortably enclose higher-gain webcam fluctuations at the outer perimeter of the screen.
+  - Implemented momentary noise buffer (tolerates up to 3 transient outlier frames near candidate boundary) so single-frame webcam noise spikes never reset the 1-second stare countdown at the display borders.
+  - Large intentional saccadic jumps (> 2.0x radius) still reset the stare timer immediately.
+- **Enhanced Gaze Gain Defaults (`EyeNoseGazeTracker`)**:
+  - Boosted sensitivity to `eyeSensitivityX: 3.0`, `eyeSensitivityY: 3.4`, `noseSensitivityX: 5.8`, `noseSensitivityY: 6.2`, and `screenRangeGain: 1.65x`.
+  - Guarantees natural eye glances and subtle nose shifts reach **100% of all 4 borders (0.0 to 1.0)** and corners effortlessly.
+- Rebuilt production bundle and redeployed daemon engine.
+
+## [0.13.0] - 2026-11-16 (Full Screen Display Reach & Dynamic Range Expansion)
+### Added
+- **Full Display Reach & Range Expansion (`EyeNoseGazeTracker`)**:
+  - Upgraded eye iris sensitivity multipliers (`eyeSensitivityX: 2.2`, `eyeSensitivityY: 2.6`) and nose displacement gains (`noseSensitivityX: 4.2`, `noseSensitivityY: 4.5`).
+  - Added `screenRangeGain` (default: `1.35x` / `1.45x`), allowing natural eye and nose movement to comfortably span from (0, 0) top-left all the way to (1920, 1080) bottom-right without eye or neck strain.
+  - Added `setRangeGain()` and `updateConfig()` API methods for dynamic coverage tuning.
+- **Diagnostics Viewport Screen Coverage Selector**:
+  - Added preset buttons in the diagnostics UI: **Standard (1.1x)**, **Full Desktop (1.45x)**, and **Ultra-Wide (1.85x)**.
+- **Unit Test Suite**:
+  - Added full-screen peripheral boundary reach test in `packages/vision/tests/eye-nose-tracker.test.ts` (50 passing unit tests total across 11 suites).
+- Rebuilt web distribution bundle and recompiled `EyeHand.exe`.
+
 ## [0.13.0] - 2026-11-16 (Full Screen Display Reach & Dynamic Range Expansion)
 ### Added
 - **Full Display Reach & Range Expansion (`EyeNoseGazeTracker`)**:
@@ -48,6 +83,32 @@ All notable changes to the EyeHand (`cc68`) project will be documented in this f
 - **Unit Tests Updated**:
   - Updated all 3 dwell test suites in `packages/core/tests/gaze-dwell-controller.test.ts` to assert against the 1.0s (1000ms) stare threshold.
 - Recompiled `EyeHand.exe` and web assets.
+
+## [0.12.0] - 2026-11-16 (1-Second Stare Dwell Cursor Movement Engine)
+### Changed
+- **Stare Dwell Duration Adjusted to 1.0 Second**:
+  - Reduced continuous gaze dwell duration from 2.0 seconds to **1.0 second (1000ms)** in `GazeDwellController`.
+  - The cursor remains completely stationary while glancing around. When the user looks at a specific position and **stares continuously for 1 second**, the cursor moves directly to that position.
+  - The circular Amber Gold charging arc around the cursor now completes a full 360° sweep in 1.0 second.
+- **Unit Tests Updated**:
+  - Updated all 3 dwell test suites in `packages/core/tests/gaze-dwell-controller.test.ts` to assert against the 1.0s (1000ms) stare threshold.
+- Recompiled `EyeHand.exe` and web assets.
+
+## [0.11.0] - 2026-11-16 (Pure Eye & Nose Gaze Tracking Engine with Head Tremor Isolation)
+### Added
+- **`EyeNoseGazeTracker` Dedicated Gaze Engine (`@cc68/vision`)**:
+  - Exclusively tracks the user's **Eyes** (binocular irises and eye contours) and **Nose** (nose tip position).
+  - Completely eliminates head rotation (pitch, yaw, roll from chin/forehead/temples) from controlling the cursor.
+  - **Involuntary Head Tremor Suppression**: Integrated a deadzone filter (`noseDeadzone: 0.012`) to ignore minor head adjustments, preventing accidental cursor wander.
+  - **Binocular Gaze Fusion**: Blends left and right eye irises with blink fallbacks and combines with the nose anchor for natural screen targeting.
+  - **Auto & Manual Calibration**: Automatically calibrates resting neutral center on the first face frame, with an explicit "Recenter Nose Anchor" button in the diagnostics viewport.
+- **Eyelid Normalization Hardening (`EyeGeometry`)**:
+  - Clamped `effectiveHeight` with `eyeWidth * 0.35` to prevent eyelid narrowing/squinting during head tilts from causing vertical cursor spikes.
+- **Diagnostics Viewport UI**:
+  - Replaced "Head Pose (Yaw/Pitch/Roll)" card with real-time **Nose Tip (X, Y)**, anchor status, and "Recenter Nose Anchor" button.
+- **Unit Test Suite**:
+  - Added `packages/vision/tests/eye-nose-tracker.test.ts` (6 new unit tests, 49 passing across 11 suites total).
+- Recompiled `EyeHand.exe` with console auto-hiding and persistent system tray execution.
 
 ## [0.11.0] - 2026-11-16 (Pure Eye & Nose Gaze Tracking Engine with Head Tremor Isolation)
 ### Added
