@@ -6,6 +6,7 @@ import {
   FaceLandmarkerService,
   HandLandmarkerService,
   EyeGeometry,
+  EyeNoseGazeTracker,
   HandGeometry,
 } from '@cc68/vision';
 
@@ -116,9 +117,14 @@ if (app) {
           </div>
         </div>
 
-        <!-- Face & Iris Tracking Telemetry -->
+        <!-- Eye & Nose Tracking Telemetry -->
         <div style="background: #020617; border-radius: 8px; padding: 1.25rem; border: 1px solid #1e293b;">
-          <h2 style="font-size: 1.1rem; margin: 0 0 0.75rem 0;">Eye Tracking & Iris Telemetry</h2>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+            <h2 style="font-size: 1.1rem; margin: 0;">Eye & Nose Gaze Telemetry</h2>
+            <button id="btn-recenter-nose" style="background: #1e293b; color: #38bdf8; border: 1px solid #334155; padding: 3px 10px; border-radius: 5px; font-size: 0.75rem; cursor: pointer;">
+              🎯 Recenter Nose Anchor
+            </button>
+          </div>
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem;">
             <div style="background: #0f172a; padding: 0.75rem; border-radius: 6px; border: 1px solid #334155;">
               <div style="font-size: 0.75rem; color: #94a3b8;">LEFT EYE (EAR)</div>
@@ -131,14 +137,14 @@ if (app) {
               <div id="val-right-blink" style="font-size: 0.75rem; color: #4ade80;">OPEN</div>
             </div>
             <div style="background: #0f172a; padding: 0.75rem; border-radius: 6px; border: 1px solid #334155;">
-              <div style="font-size: 0.75rem; color: #94a3b8;">IRIS OFFSET (X, Y)</div>
+              <div style="font-size: 0.75rem; color: #94a3b8;">BINOCULAR IRIS GAZE</div>
               <div id="val-iris-offset" style="font-size: 1.1rem; font-family: monospace; color: #a78bfa;">(0.00, 0.00)</div>
               <div style="font-size: 0.75rem; color: #64748b;">Normalized [-1, 1]</div>
             </div>
             <div style="background: #0f172a; padding: 0.75rem; border-radius: 6px; border: 1px solid #334155;">
-              <div style="font-size: 0.75rem; color: #94a3b8;">HEAD POSE (Y, P, R)</div>
-              <div id="val-head-pose" style="font-size: 1.1rem; font-family: monospace; color: #f59e0b;">0° / 0° / 0°</div>
-              <div style="font-size: 0.75rem; color: #64748b;">Yaw / Pitch / Roll</div>
+              <div style="font-size: 0.75rem; color: #94a3b8;">NOSE TIP (X, Y)</div>
+              <div id="val-nose-pos" style="font-size: 1.1rem; font-family: monospace; color: #f59e0b;">(0.50, 0.50)</div>
+              <div id="val-nose-anchor" style="font-size: 0.75rem; color: #4ade80;">ANCHOR: CALIBRATED</div>
             </div>
           </div>
         </div>
@@ -203,7 +209,9 @@ if (app) {
   const rightEarVal = document.getElementById('val-right-ear') as HTMLDivElement;
   const rightBlinkVal = document.getElementById('val-right-blink') as HTMLDivElement;
   const irisOffsetVal = document.getElementById('val-iris-offset') as HTMLDivElement;
-  const headPoseVal = document.getElementById('val-head-pose') as HTMLDivElement;
+  const nosePosVal = document.getElementById('val-nose-pos') as HTMLDivElement;
+  const noseAnchorVal = document.getElementById('val-nose-anchor') as HTMLDivElement;
+  const btnRecenterNose = document.getElementById('btn-recenter-nose') as HTMLButtonElement;
 
   const pinchDistVal = document.getElementById('val-pinch-dist') as HTMLDivElement;
   const pinchStateVal = document.getElementById('val-pinch-state') as HTMLDivElement;
@@ -217,6 +225,16 @@ if (app) {
   const mouseBridge = new DesktopMouseBridge();
   const faceLandmarker = new FaceLandmarkerService();
   const handLandmarker = new HandLandmarkerService();
+  const eyeNoseTracker = new EyeNoseGazeTracker();
+
+  if (btnRecenterNose) {
+    btnRecenterNose.addEventListener('click', () => {
+      eyeNoseTracker.calibrate();
+      noseAnchorVal.textContent = 'ANCHOR: RECENTERING...';
+      noseAnchorVal.style.color = '#f59e0b';
+      log('Nose anchor re-centered. Next frame will set new resting center.');
+    });
+  }
 
   // Fixation-Lock GazeStabilizer: eliminates ocular tremor and sensor noise
   const gazeStabilizer = new GazeStabilizer2D({
@@ -446,14 +464,12 @@ if (app) {
             currentPinch = false;
           }
 
-          // 2. Face tracking & iris gaze estimation
+          // 2. Eye & Nose tracking gaze estimation (ignores head pose; suppresses head tremor)
           const faceSummary = faceLandmarker.processVideoFrame(videoElement, now);
           if (faceSummary) {
             updateFaceTelemetry(faceSummary);
-            const irisOffset = EyeGeometry.calculateNormalizedIrisOffset(faceSummary.leftEye);
-            const normX = 0.5 - irisOffset.x * 0.85;
-            const normY = 0.5 + irisOffset.y * 0.85;
-            dispatchLivePointer(normX, normY, currentPinch, now);
+            const gaze = eyeNoseTracker.estimateGaze(faceSummary);
+            dispatchLivePointer(gaze.screenPointNorm.x, gaze.screenPointNorm.y, currentPinch, now);
           }
         }
         procTimer = requestAnimationFrame(processLoop);
@@ -507,7 +523,9 @@ if (app) {
       const normX = (eyeX - 0.5) * 2;
       const normY = (eyeY - 0.5) * 2;
       irisOffsetVal.textContent = `(${normX.toFixed(2)}, ${normY.toFixed(2)})`;
-      headPoseVal.textContent = `${(normX * 15).toFixed(0)}° / ${(normY * 10).toFixed(0)}° / 0°`;
+      nosePosVal.textContent = `(${(0.5 + normX * 0.1).toFixed(2)}, ${(0.5 + normY * 0.1).toFixed(2)})`;
+      noseAnchorVal.textContent = 'ANCHOR: CALIBRATED';
+      noseAnchorVal.style.color = '#4ade80';
 
       const pinchDist = isPinch ? 0.03 : 0.45;
       pinchDistVal.textContent = pinchDist.toFixed(2);
@@ -561,6 +579,7 @@ if (app) {
     if (gazeReticle) gazeReticle.style.display = 'none';
     gazeStabilizer.reset();
     dwellController.reset();
+    eyeNoseTracker.reset();
 
     videoElement.style.display = 'none';
     simCanvas.style.display = 'none';
@@ -574,7 +593,7 @@ if (app) {
   });
 
   function updateFaceTelemetry(summary: any) {
-    const leftOffset = EyeGeometry.calculateNormalizedIrisOffset(summary.leftEye);
+    const gaze = eyeNoseTracker.estimateGaze(summary);
     const leftEar = summary.leftEye.opennessRatio * 0.17 + 0.15;
     const rightEar = summary.rightEye.opennessRatio * 0.17 + 0.15;
     const leftBlink = EyeGeometry.isBlinking(leftEar);
@@ -587,8 +606,15 @@ if (app) {
     rightBlinkVal.textContent = rightBlink ? 'BLINKING' : 'OPEN';
     rightBlinkVal.style.color = rightBlink ? '#ef4444' : '#4ade80';
 
-    irisOffsetVal.textContent = `(${leftOffset.x.toFixed(2)}, ${leftOffset.y.toFixed(2)})`;
-    headPoseVal.textContent = `${summary.yaw.toFixed(0)}° / ${summary.pitch.toFixed(0)}° / ${summary.roll.toFixed(0)}°`;
+    irisOffsetVal.textContent = `(${gaze.eyeGazeOffset.x.toFixed(2)}, ${gaze.eyeGazeOffset.y.toFixed(2)})`;
+    nosePosVal.textContent = `(${gaze.nosePosition.x.toFixed(2)}, ${gaze.nosePosition.y.toFixed(2)})`;
+    if (gaze.isCalibrated) {
+      noseAnchorVal.textContent = 'ANCHOR: CALIBRATED';
+      noseAnchorVal.style.color = '#4ade80';
+    } else {
+      noseAnchorVal.textContent = 'ANCHOR: CALIBRATING...';
+      noseAnchorVal.style.color = '#f59e0b';
+    }
   }
 
   function updateHandTelemetry(pose: any) {

@@ -114,14 +114,15 @@ export class EyeGeometry {
   static calculateNormalizedIrisOffset(eye: EyeLandmarks): Vector2 {
     const eyeCenter = eye.innerCorner.lerp(eye.outerCorner, 0.5);
     const eyeWidth = Math.abs(eye.outerCorner.x - eye.innerCorner.x);
-    const eyeHeight = Math.abs(eye.eyelidLower.y - eye.eyelidUpper.y);
-
-    if (eyeWidth < 1e-6 || eyeHeight < 1e-6) {
+    if (eyeWidth < 1e-6) {
       return new Vector2(0, 0);
     }
+    const rawHeight = Math.abs(eye.eyelidLower.y - eye.eyelidUpper.y);
+    // Use eyeWidth * 0.35 or rawHeight to prevent division by near-zero during squints or head tilts
+    const effectiveHeight = Math.max(rawHeight, eyeWidth * 0.35);
 
     const dx = (eye.iris.center.x - eyeCenter.x) / (eyeWidth * 0.5);
-    const dy = (eye.iris.center.y - eyeCenter.y) / (eyeHeight * 0.5);
+    const dy = (eye.iris.center.y - eyeCenter.y) / (effectiveHeight * 0.5);
 
     return new Vector2(
       Math.max(-1, Math.min(1, dx)),

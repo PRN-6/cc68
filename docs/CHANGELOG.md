@@ -2,6 +2,22 @@
 
 All notable changes to the EyeHand (`cc68`) project will be documented in this file.
 
+## [0.11.0] - 2026-11-16 (Pure Eye & Nose Gaze Tracking Engine with Head Tremor Isolation)
+### Added
+- **`EyeNoseGazeTracker` Dedicated Gaze Engine (`@cc68/vision`)**:
+  - Exclusively tracks the user's **Eyes** (binocular irises and eye contours) and **Nose** (nose tip position).
+  - Completely eliminates head rotation (pitch, yaw, roll from chin/forehead/temples) from controlling the cursor.
+  - **Involuntary Head Tremor Suppression**: Integrated a deadzone filter (`noseDeadzone: 0.012`) to ignore minor head adjustments, preventing accidental cursor wander.
+  - **Binocular Gaze Fusion**: Blends left and right eye irises with blink fallbacks and combines with the nose anchor for natural screen targeting.
+  - **Auto & Manual Calibration**: Automatically calibrates resting neutral center on the first face frame, with an explicit "Recenter Nose Anchor" button in the diagnostics viewport.
+- **Eyelid Normalization Hardening (`EyeGeometry`)**:
+  - Clamped `effectiveHeight` with `eyeWidth * 0.35` to prevent eyelid narrowing/squinting during head tilts from causing vertical cursor spikes.
+- **Diagnostics Viewport UI**:
+  - Replaced "Head Pose (Yaw/Pitch/Roll)" card with real-time **Nose Tip (X, Y)**, anchor status, and "Recenter Nose Anchor" button.
+- **Unit Test Suite**:
+  - Added `packages/vision/tests/eye-nose-tracker.test.ts` (6 new unit tests, 49 passing across 11 suites total).
+- Recompiled `EyeHand.exe` with console auto-hiding and persistent system tray execution.
+
 ## [0.10.0] - 2026-11-16 (2-Second Stare Dwell Cursor Movement Engine)
 ### Added
 - **`GazeDwellController` 2-Second Stare Movement Engine**:

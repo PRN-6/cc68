@@ -40,6 +40,13 @@ namespace EyeHand
         [DllImport("user32.dll")]
         private static extern bool SetForegroundWindow(IntPtr hWnd);
 
+        [DllImport("kernel32.dll")]
+        private static extern IntPtr GetConsoleWindow();
+
+        [DllImport("user32.dll")]
+        private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+        private const int SW_HIDE = 0;
         private const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
         private const uint MOUSEEVENTF_LEFTUP = 0x0004;
         private const uint MOUSEEVENTF_RIGHTDOWN = 0x0008;
@@ -48,34 +55,50 @@ namespace EyeHand
         [STAThread]
         static void Main()
         {
-            Application.EnableVisualStyles();
-            Application.SetCompatibleTextRenderingDefault(false);
-
-            string appDir = AppDomain.CurrentDomain.BaseDirectory;
-            string distDir = Path.Combine(appDir, "apps", "web", "dist");
-            if (!Directory.Exists(distDir))
+            try
             {
-                distDir = Path.Combine(appDir, "dist");
+                // Silently hide console window immediately on launch
+                IntPtr consoleWnd = GetConsoleWindow();
+                if (consoleWnd != IntPtr.Zero)
+                {
+                    ShowWindow(consoleWnd, SW_HIDE);
+                }
+
+                Application.EnableVisualStyles();
+                Application.SetCompatibleTextRenderingDefault(false);
+
+                string appDir = AppDomain.CurrentDomain.BaseDirectory;
+                string distDir = Path.Combine(appDir, "apps", "web", "dist");
+                if (!Directory.Exists(distDir))
+                {
+                    distDir = Path.Combine(appDir, "dist");
+                }
+
+                // 1. Create and display the dedicated Custom Windows Cursor Overlay immediately on desktop
+                customCursor = new CustomCursorOverlay();
+                customCursor.Show();
+
+                // 2. Start Win32 Input API & Embedded Web Server
+                StartHttpServer(distDir);
+
+                // 3. Setup System Tray Icon & Context Menu (stays silently in tray)
+                SetupSystemTray();
+
+                // 4. Start the background eye & hand tracking engine silently (zero browser popup)
+                StartBackgroundEngine();
+
+                // 5. Run WinForms message loop to keep System Tray and Overlay active
+                Application.Run(new ApplicationContext());
             }
-
-            // 1. Create and display the dedicated Custom Windows Cursor Overlay immediately on desktop
-            customCursor = new CustomCursorOverlay();
-            customCursor.Show();
-
-            // 2. Start Win32 Input API & Embedded Web Server
-            StartHttpServer(distDir);
-
-            // 3. Setup System Tray Icon & Context Menu (stays silently in tray)
-            SetupSystemTray();
-
-            // 4. Start the background eye & hand tracking engine silently (zero browser popup)
-            StartBackgroundEngine();
-
-            // 5. Run WinForms message loop to keep System Tray and Overlay active
-            Application.Run();
-
-            // 6. Cleanup on exit
-            Cleanup();
+            catch (Exception ex)
+            {
+                try { File.WriteAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "eyehand_crash.log"), ex.ToString()); } catch { }
+            }
+            finally
+            {
+                // 6. Cleanup on exit
+                Cleanup();
+            }
         }
 
         static void SetupSystemTray()
