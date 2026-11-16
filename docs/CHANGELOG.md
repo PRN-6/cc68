@@ -2,6 +2,15 @@
 
 All notable changes to the EyeHand (`cc68`) project will be documented in this file.
 
+## [0.8.0] - 2026-11-16 (Silent Windows System Tray Execution & Background Auto-Tracking)
+### Changed
+- **Eliminated Automatic Browser Window Popup**: `EyeHand.exe` no longer pops up a browser window on startup. It runs 100% silently in the Windows System Tray.
+- **Hidden Background Vision Engine**: MediaPipe and WebCam eye-tracking pipeline automatically boots in a silent, hidden worker (`StartBackgroundEngine`).
+- **Instant Auto-Start Tracking**: Gaze and pinch tracking initializes automatically upon launching the `.exe` without requiring manual button clicks.
+- **Direct System Tray Controls**:
+  - Right-click tray menu provides direct control: `Tracking: Active / Paused`, `Custom Cursor: Visible / Hidden`, `Cursor Style (Spatial Reticle / Laser Dot / Crosshair)`, and optional `Settings & Camera Viewport...`.
+- Recompiled `EyeHand.exe` (24,576 bytes) with background execution and automatic camera tracking loop.
+
 ## [0.7.0] - 2026-11-16 (Dedicated Custom Windows Cursor Overlay)
 ### Added
 - **`CustomCursorOverlay` Win32 Native Desktop Overlay Window**: A dedicated, floating, always-on-top, click-through (`WS_EX_TRANSPARENT | WS_EX_LAYERED | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW`) holographic cursor rendered directly on Windows desktop.

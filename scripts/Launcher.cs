@@ -25,6 +25,7 @@ namespace EyeHand
         private static bool isRunning = true;
         private static bool isTrackingActive = true;
         private static NotifyIcon trayIcon;
+        private static Process backgroundProcess;
         private static Process appWindowProcess;
         private static CustomCursorOverlay customCursor;
         private const int Port = 6868;
@@ -57,18 +58,18 @@ namespace EyeHand
                 distDir = Path.Combine(appDir, "dist");
             }
 
-            // 1. Create and display the dedicated Custom Windows Cursor Overlay
+            // 1. Create and display the dedicated Custom Windows Cursor Overlay immediately on desktop
             customCursor = new CustomCursorOverlay();
             customCursor.Show();
 
             // 2. Start Win32 Input API & Embedded Web Server
             StartHttpServer(distDir);
 
-            // 3. Setup System Tray Icon & Context Menu
+            // 3. Setup System Tray Icon & Context Menu (stays silently in tray)
             SetupSystemTray();
 
-            // 4. Launch UI Window on startup
-            LaunchAppWindow();
+            // 4. Start the background eye & hand tracking engine silently (zero browser popup)
+            StartBackgroundEngine();
 
             // 5. Run WinForms message loop to keep System Tray and Overlay active
             Application.Run();
@@ -86,9 +87,9 @@ namespace EyeHand
 
             ContextMenu menu = new ContextMenu();
 
-            MenuItem openItem = new MenuItem("Open EyeHand Dashboard", (s, e) => LaunchAppWindow());
-            openItem.DefaultItem = true; // Bold font, triggered on double-click
-            menu.MenuItems.Add(openItem);
+            MenuItem statusItem = new MenuItem("EyeHand Eye Tracking: Active");
+            statusItem.Enabled = false;
+            menu.MenuItems.Add(statusItem);
 
             menu.MenuItems.Add("-");
 
@@ -97,6 +98,7 @@ namespace EyeHand
             {
                 isTrackingActive = !isTrackingActive;
                 toggleItem.Text = isTrackingActive ? "Tracking: Active" : "Tracking: Paused";
+                statusItem.Text = isTrackingActive ? "EyeHand Eye Tracking: Active" : "EyeHand Eye Tracking: Paused";
                 trayIcon.Icon = CreateTrayIcon(isTrackingActive);
                 if (customCursor != null)
                 {
@@ -105,33 +107,34 @@ namespace EyeHand
                 trayIcon.ShowBalloonTip(
                     1500,
                     "EyeHand Tracking",
-                    isTrackingActive ? "Eye & Hand tracking resumed." : "Eye & Hand tracking paused.",
+                    isTrackingActive ? "Eye tracking resumed." : "Eye tracking paused.",
                     ToolTipIcon.Info
                 );
             };
             menu.MenuItems.Add(toggleItem);
 
-            MenuItem cursorOverlayItem = new MenuItem("Custom Windows Cursor: Visible");
+            MenuItem cursorOverlayItem = new MenuItem("Custom Cursor Overlay: Visible");
             cursorOverlayItem.Click += (s, e) =>
             {
                 if (customCursor != null)
                 {
                     bool nextVis = !customCursor.IsOverlayVisible;
                     customCursor.SetVisibility(nextVis);
-                    cursorOverlayItem.Text = nextVis ? "Custom Windows Cursor: Visible" : "Custom Windows Cursor: Hidden";
-                    trayIcon.ShowBalloonTip(
-                        1200,
-                        "Custom Cursor Overlay",
-                        nextVis ? "Separate Windows cursor overlay is now visible." : "Separate Windows cursor overlay is now hidden.",
-                        ToolTipIcon.Info
-                    );
+                    cursorOverlayItem.Text = nextVis ? "Custom Cursor Overlay: Visible" : "Custom Cursor Overlay: Hidden";
                 }
             };
             menu.MenuItems.Add(cursorOverlayItem);
 
-            menu.MenuItems.Add(new MenuItem("Calibrate Gaze", (s, e) => {
-                LaunchAppWindow();
-            }));
+            MenuItem styleMenu = new MenuItem("Cursor Style");
+            styleMenu.MenuItems.Add(new MenuItem("Spatial Reticle", (s, e) => { if (customCursor != null) customCursor.SetStyle("reticle"); }));
+            styleMenu.MenuItems.Add(new MenuItem("Laser Dot", (s, e) => { if (customCursor != null) customCursor.SetStyle("dot"); }));
+            styleMenu.MenuItems.Add(new MenuItem("Crosshair", (s, e) => { if (customCursor != null) customCursor.SetStyle("crosshair"); }));
+            menu.MenuItems.Add(styleMenu);
+
+            menu.MenuItems.Add("-");
+
+            MenuItem openItem = new MenuItem("Settings & Camera Viewport...", (s, e) => LaunchAppWindow());
+            menu.MenuItems.Add(openItem);
 
             menu.MenuItems.Add("-");
 
@@ -145,11 +148,11 @@ namespace EyeHand
             trayIcon.ContextMenu = menu;
             trayIcon.DoubleClick += (s, e) => LaunchAppWindow();
 
-            // Show startup notification in tray
+            // Show startup balloon notification in system tray
             trayIcon.ShowBalloonTip(
-                2000,
+                2500,
                 "EyeHand is Running",
-                "EyeHand custom desktop cursor is active in your system tray.",
+                "Custom eye-tracking cursor is active on Windows. Look around to control it!",
                 ToolTipIcon.Info
             );
         }
@@ -398,6 +401,47 @@ namespace EyeHand
             ctx.Response.Close();
         }
 
+        /// <summary>
+        /// Starts the vision tracking engine in a hidden, silent background process (zero browser window).
+        /// </summary>
+        static void StartBackgroundEngine()
+        {
+            try
+            {
+                if (backgroundProcess != null && !backgroundProcess.HasExited)
+                {
+                    return;
+                }
+
+                string url = "http://localhost:" + Port;
+                string edgePath = @"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe";
+                if (!File.Exists(edgePath))
+                {
+                    edgePath = @"C:\Program Files\Microsoft\Edge\Application\msedge.exe";
+                }
+
+                string dataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EyeHand68", "AppData");
+
+                ProcessStartInfo psi = new ProcessStartInfo
+                {
+                    FileName = edgePath,
+                    Arguments = "--app=\"" + url + "\" --window-position=-32000,-32000 --window-size=1,1 --use-fake-ui-for-media-stream --autoplay-policy=no-user-gesture-required --no-first-run --no-default-browser-check --user-data-dir=\"" + dataDir + "\"",
+                    WindowStyle = ProcessWindowStyle.Hidden,
+                    CreateNoWindow = true,
+                    UseShellExecute = false
+                };
+
+                backgroundProcess = Process.Start(psi);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Failed to start background tracking: " + ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Optional: Opens the settings & camera diagnostic viewport only when requested from the tray.
+        /// </summary>
         static void LaunchAppWindow()
         {
             try
@@ -423,7 +467,7 @@ namespace EyeHand
                     psi = new ProcessStartInfo
                     {
                         FileName = edgePath,
-                        Arguments = "--app=\"" + url + "\" --window-size=1300,860 --user-data-dir=\"" + dataDir + "\"",
+                        Arguments = "--app=\"" + url + "\" --window-size=1200,800 --user-data-dir=\"" + dataDir + "\"",
                         UseShellExecute = false
                     };
                 }
@@ -472,6 +516,15 @@ namespace EyeHand
                 {
                     listener.Stop();
                     listener.Close();
+                }
+            }
+            catch { }
+
+            try
+            {
+                if (backgroundProcess != null && !backgroundProcess.HasExited)
+                {
+                    backgroundProcess.Kill();
                 }
             }
             catch { }

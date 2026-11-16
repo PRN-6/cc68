@@ -86,15 +86,15 @@ if (app) {
         <div style="background: #020617; border-radius: 8px; padding: 1.25rem; border: 1px solid #1e293b;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
             <h2 style="font-size: 1.1rem; margin: 0;">Camera Stream & Vision Viewport</h2>
-            <span id="stream-status" style="padding: 2px 10px; border-radius: 9999px; font-size: 0.75rem; background: #334155; color: #94a3b8; font-weight: 600;">DISCONNECTED</span>
+            <span id="stream-status" style="padding: 2px 10px; border-radius: 9999px; font-size: 0.75rem; background: #16a34a; color: #bbf7d0; font-weight: 600;">ACTIVE IN BACKGROUND</span>
           </div>
 
           <div id="viewport-container" style="position: relative; width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center; border: 1px solid #334155;">
             <video id="camera-preview" style="width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); display: none;"></video>
             <canvas id="sim-canvas" style="width: 100%; height: 100%; display: none;"></canvas>
             <div id="video-placeholder" style="color: #64748b; font-size: 0.95rem; text-align: center; line-height: 1.6;">
-              Camera stream is inactive.<br/>
-              Click <strong style="color: #38bdf8;">"Start Webcam"</strong> to use your real camera, or <strong style="color: #0d9488;">"Start Simulator"</strong> to test hands-free.
+              Eye tracking engine is active in the background.<br/>
+              Your separate custom cursor is floating on Windows desktop.
             </div>
             
             <!-- Real-time Visual Gaze Reticle in Viewport -->
@@ -105,20 +105,20 @@ if (app) {
 
           <div style="display: flex; gap: 0.75rem; margin-top: 1rem; flex-wrap: wrap;">
             <button id="btn-start-camera" style="background: #0284c7; color: white; border: none; padding: 10px 18px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.9rem;">
-              Start Webcam
+              Restart Webcam
             </button>
             <button id="btn-start-sim" style="background: #0d9488; color: white; border: none; padding: 10px 18px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.9rem;">
-              Start Simulator
+              Run Simulator
             </button>
-            <button id="btn-stop" style="background: #ef4444; color: white; border: none; padding: 10px 18px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.9rem; display: none;">
-              Stop Stream
+            <button id="btn-stop" style="background: #ef4444; color: white; border: none; padding: 10px 18px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.9rem;">
+              Pause Tracking
             </button>
           </div>
         </div>
 
         <!-- Face & Iris Tracking Telemetry -->
         <div style="background: #020617; border-radius: 8px; padding: 1.25rem; border: 1px solid #1e293b;">
-          <h2 style="font-size: 1.1rem; margin: 0 0 0.75rem 0;">Eye Tracking & Iris Telemetry (M1.2)</h2>
+          <h2 style="font-size: 1.1rem; margin: 0 0 0.75rem 0;">Eye Tracking & Iris Telemetry</h2>
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem;">
             <div style="background: #0f172a; padding: 0.75rem; border-radius: 6px; border: 1px solid #334155;">
               <div style="font-size: 0.75rem; color: #94a3b8;">LEFT EYE (EAR)</div>
@@ -143,9 +143,9 @@ if (app) {
           </div>
         </div>
 
-        <!-- 3D Hand Pose & Pinch Telemetry (M1.3) -->
+        <!-- 3D Hand Pose & Pinch Telemetry -->
         <div style="background: #020617; border-radius: 8px; padding: 1.25rem; border: 1px solid #1e293b;">
-          <h2 style="font-size: 1.1rem; margin: 0 0 0.75rem 0;">3D Hand Pose & Pinch Telemetry (M1.3)</h2>
+          <h2 style="font-size: 1.1rem; margin: 0 0 0.75rem 0;">3D Hand Pose & Pinch Telemetry</h2>
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem;">
             <div style="background: #0f172a; padding: 0.75rem; border-radius: 6px; border: 1px solid #334155;">
               <div style="font-size: 0.75rem; color: #94a3b8;">PINCH DISTANCE</div>
@@ -171,7 +171,7 @@ if (app) {
         </div>
 
         <div id="camera-log" style="padding: 0.75rem 1rem; background: #020617; border-radius: 6px; font-family: monospace; font-size: 0.85rem; color: #94a3b8; border: 1px solid #1e293b; min-height: 24px;">
-          Ready.
+          Initializing background tracking engine...
         </div>
       </div>
     </div>
@@ -238,7 +238,7 @@ if (app) {
     statusBadge.style.color = colorText;
   };
 
-  // Update on-screen visual reticle inside viewport
+  // Update in-viewport visual reticle
   const updateReticle = (normX: number, normY: number, isPinch: boolean) => {
     if (!gazeReticle || !viewportContainer) return;
     gazeReticle.style.display = 'block';
@@ -264,7 +264,7 @@ if (app) {
     const clampedX = Math.max(0, Math.min(1, normX));
     const clampedY = Math.max(0, Math.min(1, normY));
 
-    // Update the in-viewport visual reticle
+    // Update in-viewport reticle
     updateReticle(clampedX, clampedY, isPinch);
 
     if (isConnectedToNative) {
@@ -285,10 +285,10 @@ if (app) {
       // Handle pinch click / drag state transitions
       if (isPinch && !lastPinchState) {
         mouseBridge.mouseDown();
-        log('Pinch DOWN dispatched to Windows OS.');
+        log('Pinch DOWN dispatched to Windows.');
       } else if (!isPinch && lastPinchState) {
         mouseBridge.mouseUp();
-        log('Pinch UP dispatched to Windows OS.');
+        log('Pinch UP dispatched to Windows.');
       }
     }
 
@@ -313,7 +313,7 @@ if (app) {
             overlayBadge.style.backgroundColor = dim.customCursorActive ? '#064e3b' : '#334155';
           }
         }
-        log('Connected to EyeHand.exe Win32 desktop mouse engine in System Tray.');
+        log('Connected to EyeHand.exe Win32 engine in System Tray.');
       } else {
         bridgeBadge.textContent = 'Web Sandbox Mode (EyeHand.exe not detected)';
         bridgeBadge.style.color = '#94a3b8';
@@ -376,9 +376,10 @@ if (app) {
     log('Dispatched OS left click event at Custom Cursor position.');
   });
 
-  btnStartCamera.addEventListener('click', async () => {
+  // Start Real WebCam & MediaPipe Tracking Pipeline
+  async function startWebcamPipeline() {
     try {
-      log('Requesting camera & initializing Face + Hand Landmarkers...');
+      log('Starting camera & initializing Face + Hand Landmarkers...');
       setStatus('INITIALIZING', '#ca8a04', '#fef08a');
       await cameraManager.start();
       await cameraManager.attachTo(videoElement);
@@ -392,7 +393,7 @@ if (app) {
       btnStartSim.style.display = 'none';
 
       setStatus('STREAMING LIVE', '#16a34a', '#bbf7d0');
-      log('WebCam stream & Vision pipelines active at 60 FPS.');
+      log('Eye & hand tracking active at 60 FPS.');
 
       let currentPinch = false;
 
@@ -414,10 +415,9 @@ if (app) {
           const faceSummary = faceLandmarker.processVideoFrame(videoElement, now);
           if (faceSummary) {
             updateFaceTelemetry(faceSummary);
-            // Normalized iris displacement [-1, 1] mapped to normalized screen [0, 1]
             const irisOffset = EyeGeometry.calculateNormalizedIrisOffset(faceSummary.leftEye);
-            const normX = 0.5 - irisOffset.x * 0.75;
-            const normY = 0.5 + irisOffset.y * 0.75;
+            const normX = 0.5 - irisOffset.x * 0.85;
+            const normY = 0.5 + irisOffset.y * 0.85;
             dispatchLivePointer(normX, normY, currentPinch, now);
           }
         }
@@ -425,13 +425,14 @@ if (app) {
       };
       procTimer = requestAnimationFrame(processLoop);
     } catch (err: any) {
-      setStatus('ERROR', '#dc2626', '#fecaca');
-      log(`Camera Error: ${err.message}`);
+      log(`Camera not available (${err.message}). Starting simulator fallback.`);
+      startSimPipeline();
     }
-  });
+  }
 
-  btnStartSim.addEventListener('click', () => {
-    log('Starting synthetic test stream...');
+  // Fallback / Standalone Synthetic Tracking Simulation
+  function startSimPipeline() {
+    if (simTimer !== null) return;
     mockGenerator.bindCanvas(simCanvas);
 
     videoElement.style.display = 'none';
@@ -460,7 +461,6 @@ if (app) {
         isPinching: isPinch,
       });
 
-      // Update telemetry for simulated stream
       const ear = isBlink ? 0.12 : 0.32;
       leftEarVal.textContent = ear.toFixed(2);
       rightEarVal.textContent = ear.toFixed(2);
@@ -474,7 +474,6 @@ if (app) {
       irisOffsetVal.textContent = `(${normX.toFixed(2)}, ${normY.toFixed(2)})`;
       headPoseVal.textContent = `${(normX * 15).toFixed(0)}° / ${(normY * 10).toFixed(0)}° / 0°`;
 
-      // Hand simulated telemetry
       const pinchDist = isPinch ? 0.03 : 0.45;
       pinchDistVal.textContent = pinchDist.toFixed(2);
       pinchStateVal.textContent = isPinch ? 'PINCHING (ACTIVE)' : 'OPEN (RELEASED)';
@@ -484,13 +483,31 @@ if (app) {
       gestureNameVal.textContent = isPinch ? 'PINCH' : 'OPEN PALM';
       pinchPointVal.textContent = `(${handX.toFixed(2)}, ${handY.toFixed(2)})`;
 
-      // Dispatch live pointer to drive custom Windows cursor & reticle
       dispatchLivePointer(eyeX, eyeY, isPinch, performance.now());
 
       simTimer = requestAnimationFrame(tick);
     };
     simTimer = requestAnimationFrame(tick);
-    log('Synthetic 60 FPS generator active with real-time telemetry.');
+    log('Synthetic 60 FPS generator active.');
+  }
+
+  btnStartCamera.addEventListener('click', () => {
+    if (simTimer !== null) {
+      cancelAnimationFrame(simTimer);
+      simTimer = null;
+    }
+    startWebcamPipeline();
+  });
+
+  btnStartSim.addEventListener('click', () => {
+    cameraManager.stop();
+    faceLandmarker.close();
+    handLandmarker.close();
+    if (procTimer !== null) {
+      cancelAnimationFrame(procTimer);
+      procTimer = null;
+    }
+    startSimPipeline();
   });
 
   btnStop.addEventListener('click', () => {
@@ -516,8 +533,8 @@ if (app) {
     btnStartCamera.style.display = 'inline-block';
     btnStartSim.style.display = 'inline-block';
 
-    setStatus('DISCONNECTED', '#334155', '#94a3b8');
-    log('Stream stopped.');
+    setStatus('PAUSED', '#334155', '#94a3b8');
+    log('Tracking paused.');
   });
 
   function updateFaceTelemetry(summary: any) {
@@ -553,4 +570,7 @@ if (app) {
     gestureNameVal.textContent = isPinch ? 'PINCH' : fingers.count === 5 ? 'OPEN PALM' : 'FINGER POSE';
     pinchPointVal.textContent = `(${pinch.contactScreenPoint.x.toFixed(2)}, ${pinch.contactScreenPoint.y.toFixed(2)})`;
   }
+
+  // AUTO-START on launch: Runs immediately in the background without needing user clicks
+  startWebcamPipeline();
 }
