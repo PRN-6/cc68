@@ -8,6 +8,7 @@ export interface ScreenDimensions {
 export interface CustomCursorMoveOptions {
   pinch?: boolean;
   syncOs?: boolean;
+  progress?: number;
 }
 
 export interface CustomCursorConfig {
@@ -51,9 +52,10 @@ export class DesktopMouseBridge {
     if (this.isAvailable === false) return;
     const pinch = options?.pinch ? '1' : '0';
     const syncOs = options?.syncOs !== false ? '1' : '0';
+    const progress = options?.progress !== undefined ? options.progress.toFixed(2) : '0';
     try {
       await fetch(
-        `${this.baseUrl}/mouse/move?x=${Math.round(x)}&y=${Math.round(y)}&pinch=${pinch}&syncOs=${syncOs}`,
+        `${this.baseUrl}/mouse/move?x=${Math.round(x)}&y=${Math.round(y)}&pinch=${pinch}&syncOs=${syncOs}&progress=${progress}`,
         { method: 'GET' }
       );
     } catch {

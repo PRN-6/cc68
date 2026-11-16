@@ -2,6 +2,21 @@
 
 All notable changes to the EyeHand (`cc68`) project will be documented in this file.
 
+## [0.10.0] - 2026-11-16 (2-Second Stare Dwell Cursor Movement Engine)
+### Added
+- **`GazeDwellController` 2-Second Stare Movement Engine**:
+  - The cursor remains completely stationary and **does not move** while the user glances or looks around normally.
+  - When the user focuses on a specific position and **stares continuously for 2.0 seconds** (2000ms), the cursor moves directly to that position.
+  - If the user glances away before 2 seconds have elapsed, the countdown resets and the cursor does not move.
+- **Amber Gold Countdown Charging Arc**:
+  - `CustomCursorOverlay` on Windows renders a circular progress arc charging clockwise from 0° to 360° over the 2-second stare duration to give clear visual feedback.
+  - Reaching 100% (2 seconds) moves the cursor to that location and plays a subtle lock animation.
+- **DesktopMouseBridge & Launcher Integration**:
+  - Extended `/api/mouse/move` to stream live stare progress and synchronize custom cursor position only upon confirmed stare dwell.
+- **Unit Test Suite**:
+  - Added `packages/core/tests/gaze-dwell-controller.test.ts` verifying dwell timing, threshold compliance, wandering gaze rejection, and consecutive dwell moves (43 passing unit tests total).
+- Recompiled `EyeHand.exe` (25,088 bytes) with 2-second stare dwell logic.
+
 ## [0.9.0] - 2026-11-16 (Fixation-Lock GazeStabilizer & Zero-Jitter Cursor Engine)
 ### Added
 - **`GazeStabilizer2D` Dual-State Filter Engine**:

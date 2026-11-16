@@ -51,7 +51,7 @@ describe('DesktopMouseBridge', () => {
     await bridge.click('left');
 
     expect(fetchMock).toHaveBeenCalledWith(
-      'http://localhost:6868/api/mouse/move?x=500&y=301&pinch=0&syncOs=1',
+      'http://localhost:6868/api/mouse/move?x=500&y=301&pinch=0&syncOs=1&progress=0',
       { method: 'GET' }
     );
     expect(fetchMock).toHaveBeenCalledWith('http://localhost:6868/api/mouse/click?button=left', {
@@ -71,7 +71,7 @@ describe('DesktopMouseBridge', () => {
 
     await bridge.moveCustomCursor(640, 360, { pinch: true });
     expect(fetchMock).toHaveBeenCalledWith(
-      'http://localhost:6868/api/mouse/move?x=640&y=360&pinch=1&syncOs=0',
+      'http://localhost:6868/api/mouse/move?x=640&y=360&pinch=1&syncOs=0&progress=0',
       { method: 'GET' }
     );
 

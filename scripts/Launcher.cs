@@ -250,10 +250,16 @@ namespace EyeHand
                         bool pinch = (ctx.Request.QueryString["pinch"] == "true" || ctx.Request.QueryString["pinch"] == "1");
                         string syncParam = ctx.Request.QueryString["syncOs"];
                         bool syncOs = (syncParam == "1" || syncParam == "true");
+                        string progStr = ctx.Request.QueryString["progress"];
+                        float progress = 0f;
+                        if (!string.IsNullOrEmpty(progStr))
+                        {
+                            float.TryParse(progStr, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out progress);
+                        }
 
                         if (customCursor != null)
                         {
-                            customCursor.UpdatePosition(x, y, pinch, syncOs);
+                            customCursor.UpdatePosition(x, y, pinch, syncOs, progress);
                         }
                         else if (syncOs)
                         {
@@ -562,6 +568,7 @@ namespace EyeHand
         public int CursorY { get; private set; }
         public bool IsOverlayVisible { get; private set; }
 
+        private float dwellProgress;
         private bool isPinching;
         private int cursorSize;
         private string cursorStyle;
@@ -625,10 +632,11 @@ namespace EyeHand
             get { return true; }
         }
 
-        public void UpdatePosition(int x, int y, bool pinching, bool syncOs)
+        public void UpdatePosition(int x, int y, bool pinching, bool syncOs, float progress)
         {
             CursorX = x;
             CursorY = y;
+            dwellProgress = progress;
 
             if (syncOs)
             {
@@ -639,9 +647,12 @@ namespace EyeHand
             {
                 int targetLeft = x - cursorSize / 2;
                 int targetTop = y - cursorSize / 2;
-                SetWindowPos(this.Handle, HWND_TOPMOST, targetLeft, targetTop, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE);
+                if (targetLeft != this.Left || targetTop != this.Top)
+                {
+                    SetWindowPos(this.Handle, HWND_TOPMOST, targetLeft, targetTop, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE);
+                }
 
-                if (pinching != isPinching)
+                if (pinching != isPinching || progress > 0.02f)
                 {
                     isPinching = pinching;
                     if (this.InvokeRequired)
@@ -844,6 +855,17 @@ namespace EyeHand
                 using (SolidBrush dot = new SolidBrush(Color.White))
                 {
                     g.FillEllipse(dot, cx - 2, cy - 2, 4, 4);
+                }
+            }
+
+            // 2-Second Stare Dwell Countdown Arc (charges up when user stares at a target)
+            if (dwellProgress > 0.02f)
+            {
+                using (Pen progPen = new Pen(Color.FromArgb(245, 158, 11), 3.0f))
+                {
+                    int pr = (int)(cursorSize * 0.38f);
+                    float sweep = Math.Min(360f, dwellProgress * 360f);
+                    g.DrawArc(progPen, cx - pr, cy - pr, pr * 2, pr * 2, -90f, sweep);
                 }
             }
         }

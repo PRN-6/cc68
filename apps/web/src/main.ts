@@ -1,4 +1,4 @@
-import { CORE_VERSION, DesktopMouseBridge, GazeStabilizer2D, Vector2 } from '@cc68/core';
+import { CORE_VERSION, DesktopMouseBridge, GazeStabilizer2D, GazeDwellController, Vector2 } from '@cc68/core';
 import {
   VISION_VERSION,
   VideoStreamManager,
@@ -218,7 +218,7 @@ if (app) {
   const faceLandmarker = new FaceLandmarkerService();
   const handLandmarker = new HandLandmarkerService();
 
-  // Fixation-Lock GazeStabilizer: eliminates tremor/shaking when looking at a spot, and glides smoothly when looking at a new target
+  // Fixation-Lock GazeStabilizer: eliminates ocular tremor and sensor noise
   const gazeStabilizer = new GazeStabilizer2D({
     deadzoneRadiusPixels: 35,
     releaseThresholdPixels: 55,
@@ -228,6 +228,15 @@ if (app) {
     oneEuroBeta: 0.018,
   });
 
+  // 2-Second Stare Dwell Controller:
+  // "move the cursor when user sees a specific position and stares at it for 2 sec, until then don't move"
+  const dwellController = new GazeDwellController({
+    stareDurationMs: 2000, // 2.0 seconds
+    stareRadiusPixels: 75,
+    minTargetDistancePixels: 45,
+  });
+
+  let initialCursorDispatched = false;
   let simTimer: number | null = null;
   let procTimer: number | null = null;
   let isConnectedToNative = false;
@@ -246,7 +255,7 @@ if (app) {
   };
 
   // Update in-viewport visual reticle
-  const updateReticle = (normX: number, normY: number, isPinch: boolean) => {
+  const updateReticle = (normX: number, normY: number, isPinch: boolean, dwellProgress: number) => {
     if (!gazeReticle || !viewportContainer) return;
     gazeReticle.style.display = 'block';
     const rect = viewportContainer.getBoundingClientRect();
@@ -259,6 +268,11 @@ if (app) {
       gazeReticle.style.borderColor = '#4ade80';
       gazeReticle.style.boxShadow = '0 0 16px rgba(74, 222, 128, 0.9)';
       gazeReticle.style.transform = 'translate(-50%, -50%) scale(0.85)';
+    } else if (dwellProgress > 0.05) {
+      // Staring at candidate position: charging progress ring up to 2 seconds
+      gazeReticle.style.borderColor = '#f59e0b';
+      gazeReticle.style.boxShadow = `0 0 ${12 + dwellProgress * 12}px rgba(245, 158, 11, 0.8)`;
+      gazeReticle.style.transform = `translate(-50%, -50%) scale(${1.0 + dwellProgress * 0.25})`;
     } else {
       gazeReticle.style.borderColor = '#38bdf8';
       gazeReticle.style.boxShadow = '0 0 14px rgba(56, 189, 248, 0.7)';
@@ -274,28 +288,36 @@ if (app) {
     const rawTargetX = clampedX * screenDims.width;
     const rawTargetY = clampedY * screenDims.height;
 
-    // Run through Oculomotor Fixation-Lock Stabilizer:
-    // When looking at a position on screen, it locks constant with zero vibration/shake.
-    // When looking at a new position, it smoothly moves there and locks again.
+    // 1. Stabilize raw gaze with Fixation-Lock
     const stabilized = gazeStabilizer.filter(new Vector2(rawTargetX, rawTargetY), timestamp);
-    const finalX = stabilized.point.x;
-    const finalY = stabilized.point.y;
 
-    // Update in-viewport reticle
-    updateReticle(finalX / screenDims.width, finalY / screenDims.height, isPinch);
+    // 2. Feed to 2-Second Stare Dwell Controller:
+    // Moves the cursor ONLY when the user stares at a specific position for 2 full seconds; until then, does not move!
+    const dwell = dwellController.update(stabilized.point, timestamp);
+    const activeCursor = dwell.cursorPosition;
+
+    // Visual feedback in viewport
+    updateReticle(activeCursor.x / screenDims.width, activeCursor.y / screenDims.height, isPinch, dwell.dwellProgress);
 
     if (isConnectedToNative) {
-      if (!isDispatchingMove) {
-        isDispatchingMove = true;
-        const syncOs = chkSyncRealMouse ? chkSyncRealMouse.checked : false;
-        mouseBridge
-          .moveCursor(finalX, finalY, { pinch: isPinch, syncOs })
-          .finally(() => {
-            isDispatchingMove = false;
-          });
+      // Only dispatch movement to Windows if 2-second stare completed (hasMoved) OR initial placement or charging progress
+      if (dwell.hasMoved || !initialCursorDispatched || dwell.dwellProgress > 0.02) {
+        if (!isDispatchingMove) {
+          isDispatchingMove = true;
+          const syncOs = chkSyncRealMouse ? chkSyncRealMouse.checked : false;
+          mouseBridge
+            .moveCursor(activeCursor.x, activeCursor.y, { pinch: isPinch, syncOs, progress: dwell.dwellProgress })
+            .finally(() => {
+              isDispatchingMove = false;
+            });
+          if (dwell.hasMoved) {
+            log(`2-Second Stare confirmed! Cursor moved to (${Math.round(activeCursor.x)}, ${Math.round(activeCursor.y)}).`);
+          }
+          initialCursorDispatched = true;
+        }
       }
 
-      // Handle pinch click / drag state transitions
+      // Handle pinch click / drag state transitions at current cursor position
       if (isPinch && !lastPinchState) {
         mouseBridge.mouseDown();
         log('Pinch DOWN dispatched to Windows.');
@@ -538,6 +560,7 @@ if (app) {
 
     if (gazeReticle) gazeReticle.style.display = 'none';
     gazeStabilizer.reset();
+    dwellController.reset();
 
     videoElement.style.display = 'none';
     simCanvas.style.display = 'none';
