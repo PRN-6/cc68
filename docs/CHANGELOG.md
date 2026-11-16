@@ -2,6 +2,19 @@
 
 All notable changes to the EyeHand (`cc68`) project will be documented in this file.
 
+## [0.15.1] - 2026-11-16 (Interactive 5-Point Calibration & Tracking Precision Fix)
+### Fixed
+- **Horizontal Axis Inversion & Vertical Webcam Offset Compensation**:
+  - Corrected horizontal coordinate mapping so glancing right moves right and glancing left moves left.
+  - Neutralized the downward optical pitch offset caused by top-mounted laptop/monitor webcams.
+- **Interactive 5-Point Calibration (`scripts/eye_mouse_tracker.py`)**:
+  - Implemented an interactive full-screen calibration routine (Center, Top-Left, Top-Right, Bottom-Right, Bottom-Left) that computes the exact Affine / Homography mapping matrix between the user's eye features and their screen coordinates.
+  - Automatically saves to `gaze_calibration.npy` for instant loading on subsequent runs.
+  - Press `[C]` anytime to recalibrate; press `[Space]` for instant auto-centering.
+- **Tracking Mode Toggle**:
+  - Added toggle (`[D]` key in Python tracker / dropdown in Web UI) between **Live Smooth Follow (Real-time)** and **1.0-Second Stare Dwell Lock**.
+  - Defaulting to Live Smooth Follow gives immediate, continuous visual feedback so the user can easily verify their gaze tracking.
+
 ## [0.15.0] - 2026-11-16 (Integrated Proven GitHub Eye-Controlled-Mouse Engine)
 ### Added
 - **Vendored GitHub Repository (`external/eye-controlled-mouse/`)**:
@@ -18,6 +31,18 @@ All notable changes to the EyeHand (`cc68`) project will be documented in this f
   - Added "Launch Python Eye Tracker (GitHub Engine)..." to `EyeHand.exe` System Tray context menu.
   - Added `run-python-tracker.bat` for one-click launching in Windows.
   - Downloaded offline `face_landmarker.task` model asset.
+
+## [0.14.1] - 2026-11-16 (Single-Instance Mutex & Port 6868 Socket Conflict Resolution)
+### Fixed
+- **Single-Instance Mutex Guard (`scripts/Launcher.cs`)**:
+  - Implemented named system mutex (`Local\EyeHand_cc68_SingleInstance_Mutex`) to eliminate socket conflict errors when `EyeHand.exe` is launched multiple times.
+  - Secondary launches gracefully detect the active instance, print a helpful notification to the console terminal, open the Settings & Camera Viewport (`http://localhost:6868`) in the browser, and exit with code 0.
+  - Safely releases and disposes the mutex on application exit in `Cleanup()`.
+- **Console Terminal Safety**:
+  - Eliminated dangerous `ShowWindow(GetConsoleWindow(), SW_HIDE)` call which hid the user's PowerShell/command terminal on launch.
+  - Added `AttachConsole(ATTACH_PARENT_PROCESS)` for friendly terminal feedback without creating unwanted console windows.
+- **Edge Headless Command-Line Robustness**:
+  - Added `--disable-search-engine-choice-screen`, `--disable-features=msFirstRunExperience,msEdgeEnableNurturing,msEdgeWelcomePage` to prevent any Microsoft First-Run / Privacy prompts from appearing.
 
 ## [0.14.1] - 2026-11-16 (Single-Instance Mutex & Port 6868 Socket Conflict Resolution)
 ### Fixed

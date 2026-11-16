@@ -41,7 +41,7 @@ if (app) {
           </div>
           
           <!-- Mode Toggles -->
-          <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.75rem;">
+          <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.75rem;">
             <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; background: #1e293b; padding: 8px 14px; border-radius: 6px; font-size: 0.85rem; color: #38bdf8; font-weight: 600; border: 1px solid #334155; user-select: none;">
               <input type="checkbox" id="chk-custom-cursor" checked style="cursor: pointer; width: 18px; height: 18px; accent-color: #38bdf8;" />
               <span>Show Custom Windows Cursor Overlay</span>
@@ -49,6 +49,13 @@ if (app) {
             <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; background: #1e293b; padding: 8px 14px; border-radius: 6px; font-size: 0.85rem; color: #94a3b8; font-weight: 500; border: 1px solid #334155; user-select: none;">
               <input type="checkbox" id="chk-sync-real-mouse" style="cursor: pointer; width: 18px; height: 18px; accent-color: #38bdf8;" />
               <span>Sync Real OS Mouse Pointer</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 0.5rem; background: #1e293b; padding: 6px 12px; border-radius: 6px; font-size: 0.85rem; color: #f8fafc; border: 1px solid #334155;">
+              <span style="color: #94a3b8;">Gaze Mode:</span>
+              <select id="sel-gaze-mode" style="background: #0f172a; color: #38bdf8; border: 1px solid #334155; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem; cursor: pointer; font-weight: 600;">
+                <option value="live" selected>Live Smooth Follow (Real-time)</option>
+                <option value="dwell">1-Second Stare Dwell Lock</option>
+              </select>
             </label>
           </div>
 
@@ -309,6 +316,8 @@ if (app) {
     }
   };
 
+  const selGazeMode = document.getElementById('sel-gaze-mode') as HTMLSelectElement;
+
   // Dispatch coordinates to OS-level Custom Windows Cursor Overlay & Win32 bridge
   const dispatchLivePointer = async (normX: number, normY: number, isPinch: boolean, timestamp: number) => {
     const clampedX = Math.max(0, Math.min(1, normX));
@@ -320,28 +329,33 @@ if (app) {
     // 1. Stabilize raw gaze with Fixation-Lock
     const stabilized = gazeStabilizer.filter(new Vector2(rawTargetX, rawTargetY), timestamp);
 
-    // 2. Feed to 1-Second Stare Dwell Controller:
-    // Moves the cursor ONLY when the user stares at a specific position for 1 full second; until then, does not move!
-    const dwell = dwellController.update(stabilized.point, timestamp);
-    const activeCursor = dwell.cursorPosition;
+    const isLiveMode = !selGazeMode || selGazeMode.value === 'live';
+
+    let activeCursor = stabilized.point;
+    let dwellProgress = 0.0;
+    let shouldMove = true;
+
+    if (!isLiveMode) {
+      // 2. Feed to 1-Second Stare Dwell Controller:
+      const dwell = dwellController.update(stabilized.point, timestamp);
+      activeCursor = dwell.cursorPosition;
+      dwellProgress = dwell.dwellProgress;
+      shouldMove = dwell.hasMoved || !initialCursorDispatched || dwellProgress > 0.02;
+    }
 
     // Visual feedback in viewport
-    updateReticle(activeCursor.x / screenDims.width, activeCursor.y / screenDims.height, isPinch, dwell.dwellProgress);
+    updateReticle(activeCursor.x / screenDims.width, activeCursor.y / screenDims.height, isPinch, dwellProgress);
 
     if (isConnectedToNative) {
-      // Only dispatch movement to Windows if 1-second stare completed (hasMoved) OR initial placement or charging progress
-      if (dwell.hasMoved || !initialCursorDispatched || dwell.dwellProgress > 0.02) {
+      if (shouldMove) {
         if (!isDispatchingMove) {
           isDispatchingMove = true;
           const syncOs = chkSyncRealMouse ? chkSyncRealMouse.checked : false;
           mouseBridge
-            .moveCursor(activeCursor.x, activeCursor.y, { pinch: isPinch, syncOs, progress: dwell.dwellProgress })
+            .moveCursor(activeCursor.x, activeCursor.y, { pinch: isPinch, syncOs, progress: dwellProgress })
             .finally(() => {
               isDispatchingMove = false;
             });
-          if (dwell.hasMoved) {
-            log(`1-Second Stare confirmed! Cursor moved to (${Math.round(activeCursor.x)}, ${Math.round(activeCursor.y)}).`);
-          }
           initialCursorDispatched = true;
         }
       }
