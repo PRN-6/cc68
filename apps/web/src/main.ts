@@ -147,6 +147,16 @@ if (app) {
               <div id="val-nose-anchor" style="font-size: 0.75rem; color: #4ade80;">ANCHOR: CALIBRATED</div>
             </div>
           </div>
+          <!-- Screen Coverage Reach Selector -->
+          <div style="display: flex; gap: 0.75rem; align-items: center; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid #1e293b; flex-wrap: wrap;">
+            <span style="font-size: 0.8rem; color: #94a3b8;">Screen Coverage Reach:</span>
+            <div style="display: flex; gap: 0.25rem;">
+              <button class="btn-range" data-gain="1.1" style="background: #1e293b; color: #cbd5e1; border: 1px solid #334155; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer;">Standard (1.1x)</button>
+              <button class="btn-range" data-gain="1.45" style="background: #0284c7; color: white; border: 1px solid #38bdf8; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer; font-weight: bold;">Full Desktop (1.45x)</button>
+              <button class="btn-range" data-gain="1.85" style="background: #1e293b; color: #cbd5e1; border: 1px solid #334155; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer;">Ultra-Wide (1.85x)</button>
+            </div>
+            <span style="font-size: 0.75rem; color: #64748b; margin-left: auto;">Effortlessly reaches all 4 borders &amp; corners of your display</span>
+          </div>
         </div>
 
         <!-- 3D Hand Pose & Pinch Telemetry -->
@@ -414,6 +424,27 @@ if (app) {
       const sz = parseInt(target.getAttribute('data-sz') || '68', 10);
       await mouseBridge.configureCustomCursor({ size: sz });
       log(`Custom cursor size changed to: ${sz}px`);
+    });
+  });
+
+  // Screen Coverage Reach Buttons
+  document.querySelectorAll('.btn-range').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      document.querySelectorAll('.btn-range').forEach((b) => {
+        (b as HTMLElement).style.background = '#1e293b';
+        (b as HTMLElement).style.color = '#cbd5e1';
+        (b as HTMLElement).style.borderColor = '#334155';
+        (b as HTMLElement).style.fontWeight = 'normal';
+      });
+      const target = e.currentTarget as HTMLElement;
+      target.style.background = '#0284c7';
+      target.style.color = 'white';
+      target.style.borderColor = '#38bdf8';
+      target.style.fontWeight = 'bold';
+
+      const gain = parseFloat(target.getAttribute('data-gain') || '1.45');
+      eyeNoseTracker.setRangeGain(gain);
+      log(`Screen coverage gain set to ${gain}x (Full display reach).`);
     });
   });
 

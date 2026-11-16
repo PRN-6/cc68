@@ -130,4 +130,19 @@ describe('EyeNoseGazeTracker', () => {
     expect(res.screenPointNorm.x).toBeCloseTo(0.5, 2);
     expect(res.screenPointNorm.y).toBeCloseTo(0.5, 2);
   });
+
+  it('effortlessly reaches full screen boundaries (0.0 to 1.0) on peripheral gaze', () => {
+    const tracker = new EyeNoseGazeTracker();
+    tracker.estimateGaze(createMockFaceSummary(new Vector2(0.50, 0.50)));
+
+    // Looking far right (mirrored coordinates)
+    const farRight = createMockFaceSummary(new Vector2(0.42, 0.50), -0.7, -0.7);
+    const rightRes = tracker.estimateGaze(farRight);
+    expect(rightRes.screenPointNorm.x).toBeGreaterThan(0.95);
+
+    // Looking far left
+    const farLeft = createMockFaceSummary(new Vector2(0.58, 0.50), 0.7, 0.7);
+    const leftRes = tracker.estimateGaze(farLeft);
+    expect(leftRes.screenPointNorm.x).toBeLessThan(0.05);
+  });
 });

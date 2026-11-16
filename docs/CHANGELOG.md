@@ -2,6 +2,18 @@
 
 All notable changes to the EyeHand (`cc68`) project will be documented in this file.
 
+## [0.13.0] - 2026-11-16 (Full Screen Display Reach & Dynamic Range Expansion)
+### Added
+- **Full Display Reach & Range Expansion (`EyeNoseGazeTracker`)**:
+  - Upgraded eye iris sensitivity multipliers (`eyeSensitivityX: 2.2`, `eyeSensitivityY: 2.6`) and nose displacement gains (`noseSensitivityX: 4.2`, `noseSensitivityY: 4.5`).
+  - Added `screenRangeGain` (default: `1.35x` / `1.45x`), allowing natural eye and nose movement to comfortably span from (0, 0) top-left all the way to (1920, 1080) bottom-right without eye or neck strain.
+  - Added `setRangeGain()` and `updateConfig()` API methods for dynamic coverage tuning.
+- **Diagnostics Viewport Screen Coverage Selector**:
+  - Added preset buttons in the diagnostics UI: **Standard (1.1x)**, **Full Desktop (1.45x)**, and **Ultra-Wide (1.85x)**.
+- **Unit Test Suite**:
+  - Added full-screen peripheral boundary reach test in `packages/vision/tests/eye-nose-tracker.test.ts` (50 passing unit tests total across 11 suites).
+- Rebuilt web distribution bundle and recompiled `EyeHand.exe`.
+
 ## [0.12.0] - 2026-11-16 (1-Second Stare Dwell Cursor Movement Engine)
 ### Changed
 - **Stare Dwell Duration Adjusted to 1.0 Second**:

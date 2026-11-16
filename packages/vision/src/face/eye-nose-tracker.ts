@@ -2,29 +2,32 @@ import { FaceLandmarksSummary, Vector2 } from '@cc68/core';
 import { EyeGeometry } from './eye-geometry';
 
 export interface EyeNoseTrackerConfig {
-  /** Sensitivity multiplier for eye iris gaze in X axis (default: 0.70) */
+  /** Sensitivity multiplier for eye iris gaze in X axis (default: 2.2) */
   eyeSensitivityX: number;
-  /** Sensitivity multiplier for eye iris gaze in Y axis (default: 0.75) */
+  /** Sensitivity multiplier for eye iris gaze in Y axis (default: 2.6) */
   eyeSensitivityY: number;
-  /** Sensitivity multiplier for nose tip displacement in X axis (default: 0.85) */
+  /** Sensitivity multiplier for nose tip displacement in X axis (default: 4.2) */
   noseSensitivityX: number;
-  /** Sensitivity multiplier for nose tip displacement in Y axis (default: 0.90) */
+  /** Sensitivity multiplier for nose tip displacement in Y axis (default: 4.5) */
   noseSensitivityY: number;
-  /** Deadzone threshold for nose movement to ignore involuntary head tremor (default: 0.012) */
+  /** Deadzone threshold for nose movement to ignore involuntary head tremor (default: 0.010) */
   noseDeadzone: number;
   /** Weight of eye iris gaze vs nose tracking (0.0 = nose only, 1.0 = eye only, default: 0.55) */
   eyeBlendWeight: number;
+  /** Overall screen range expansion gain to effortlessly reach all 4 display borders (default: 1.35) */
+  screenRangeGain: number;
   /** Whether to auto-calibrate resting anchor on first valid face detection (default: true) */
   autoCalibrateOnFirstFrame: boolean;
 }
 
 export const DEFAULT_EYE_NOSE_CONFIG: EyeNoseTrackerConfig = {
-  eyeSensitivityX: 0.70,
-  eyeSensitivityY: 0.75,
-  noseSensitivityX: 0.85,
-  noseSensitivityY: 0.90,
-  noseDeadzone: 0.012,
+  eyeSensitivityX: 2.2,
+  eyeSensitivityY: 2.6,
+  noseSensitivityX: 4.2,
+  noseSensitivityY: 4.5,
+  noseDeadzone: 0.010,
   eyeBlendWeight: 0.55,
+  screenRangeGain: 1.35,
   autoCalibrateOnFirstFrame: true,
 };
 
@@ -101,6 +104,29 @@ export class EyeNoseGazeTracker {
   }
 
   /**
+   * Adjust the overall screen range expansion gain.
+   */
+  setRangeGain(gain: number): void {
+    if (gain > 0.1 && gain < 5.0) {
+      this.config.screenRangeGain = gain;
+    }
+  }
+
+  /**
+   * Update tracker configuration dynamically.
+   */
+  updateConfig(config: Partial<EyeNoseTrackerConfig>): void {
+    this.config = { ...this.config, ...config };
+  }
+
+  /**
+   * Get current configuration.
+   */
+  getConfig(): EyeNoseTrackerConfig {
+    return { ...this.config };
+  }
+
+  /**
    * Estimate normalized screen gaze point strictly from the Eyes and Nose.
    */
   estimateGaze(summary: FaceLandmarksSummary): EyeNoseGazeResult {
@@ -166,14 +192,14 @@ export class EyeNoseGazeTracker {
     const noseWeight = 1.0 - eyeWeight;
 
     const deltaX =
-      eyeGazeOffset.x * this.config.eyeSensitivityX * eyeWeight +
-      noseOffset.x * this.config.noseSensitivityX * noseWeight;
+      (eyeGazeOffset.x * this.config.eyeSensitivityX * eyeWeight +
+       noseOffset.x * this.config.noseSensitivityX * noseWeight) * this.config.screenRangeGain;
 
     const deltaY =
-      eyeGazeOffset.y * this.config.eyeSensitivityY * eyeWeight +
-      noseOffset.y * this.config.noseSensitivityY * noseWeight;
+      (eyeGazeOffset.y * this.config.eyeSensitivityY * eyeWeight +
+       noseOffset.y * this.config.noseSensitivityY * noseWeight) * this.config.screenRangeGain;
 
-    // Center baseline is 0.5, 0.5
+    // Center baseline is 0.5, 0.5; cleanly clamped to full display bounds [0.0, 1.0]
     const normX = Math.max(0, Math.min(1, 0.5 - deltaX));
     const normY = Math.max(0, Math.min(1, 0.5 + deltaY));
 
