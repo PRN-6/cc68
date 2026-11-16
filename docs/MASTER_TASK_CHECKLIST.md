@@ -9,7 +9,7 @@
 | Milestone | Title | Status | Completion Date |
 |---|---|---|---|
 | **M0** | **Project Foundation & Tooling** | **COMPLETED** | Nov 15, 2026 |
-| **M1** | **Computer Vision & Sensor Pipeline** | **IN PROGRESS (M1.1 & M1.2 Done)** | Nov 16, 2026 |
+| **M1** | **Computer Vision & Sensor Pipeline** | **IN PROGRESS (M1.1, M1.2, M1.3 Done)** | Nov 16, 2026 |
 | **M2** | Gaze Estimation & 9-Point Calibration Engine | *Queued* | — |
 | **M3** | 3D Hand Pose & Spatial Gesture Detection | *Queued* | — |
 | **M4** | Eye-Hand Multimodal Fusion & Interaction | *Queued* | — |
@@ -80,10 +80,14 @@
   - [x] Calculate normalized 2D iris displacement $[-1, 1]$ relative to inner and outer canthi and eyelid boundaries.
   - [x] Estimate 3D head pose orientation (pitch, yaw, roll) using key facial anchor points.
   - [x] Add unit test suite verifying EAR blink thresholds, iris offset tracking, and head pose estimation.
-- [ ] **Task M1.3: MediaPipe Hand Landmarker & Pose Tracking**
-  - [ ] Integrate `@mediapipe/tasks-vision` HandLandmarker.
-  - [ ] Extract 21 3D hand joints per hand (left / right classification).
-  - [ ] Compute palm normal vector and hand bounding sphere.
+- [x] **Task M1.3: MediaPipe Hand Landmarker & Pose Tracking**
+  - [x] Integrate `@mediapipe/tasks-vision` HandLandmarker with multi-hand support.
+  - [x] Extract 21 3D hand joints per hand with left/right handedness classification.
+  - [x] Compute anatomical hand scale (Wrist #0 to Middle MCP #9) for scale-invariant distance measurements.
+  - [x] Compute 3D pinch distance (Thumb Tip #4 to Index Tip #8) and normalized pinch ratio.
+  - [x] Compute outward palm normal vector perpendicular to palm plane (Wrist, Index MCP, Pinky MCP).
+  - [x] Classify extended fingers (Thumb, Index, Middle, Ring, Pinky) and calculate bounding sphere.
+  - [x] Add unit test suite verifying scale calculation, pinch contact metrics, palm normal, and finger extension.
 - [ ] **Task M1.4: Synthetic Landmark Stream Generator**
   - [ ] Implement headless deterministic synthetic landmark generator.
   - [ ] Provide scripted trajectories for eyes and hands for automated CI tests without webcam.

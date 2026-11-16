@@ -2,6 +2,16 @@
 
 All notable changes to the EyeHand (`cc68`) project will be documented in this file.
 
+## [0.4.0] - 2026-11-16 (Milestone M1: Computer Vision & Sensor Pipeline - Task M1.3)
+### Added
+- `HandLandmarkerService` orchestrating MediaPipe 21-joint 3D hand tracking with left/right hand classification.
+- `HandGeometry` utility implementing scale-invariant distance measurements based on Wrist-to-Middle-MCP anatomical baseline.
+- 3D Pinch distance metric calculation (Thumb tip #4 to Index tip #8) with normalized ratio and 3D contact midpoint coordinates.
+- Palm normal vector computation with handedness inversion to detect whether the hand is facing toward or away from the camera.
+- Extended fingers state classifier (Thumb, Index, Middle, Ring, Pinky) and bounding sphere computation.
+- Real-time 3D Hand Pose & Pinch Telemetry card in `apps/web` displaying pinch distance, state (PINCHING vs RELEASED), palm orientation, and finger count.
+- Unit test suite for `HandGeometry` and `HandLandmarkerService` (31 passing unit tests total across workspace).
+
 ## [0.3.0] - 2026-11-16 (Milestone M1: Computer Vision & Sensor Pipeline - Task M1.2)
 ### Added
 - `FaceLandmarkerService` integrating MediaPipe FaceLandmarker with WebAssembly and GPU acceleration.

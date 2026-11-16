@@ -4,7 +4,9 @@ import {
   VideoStreamManager,
   MockStreamGenerator,
   FaceLandmarkerService,
+  HandLandmarkerService,
   EyeGeometry,
+  HandGeometry,
 } from '@cc68/vision';
 
 console.log(`EyeHand Web initialized with Core v${CORE_VERSION}, Vision v${VISION_VERSION}`);
@@ -79,6 +81,33 @@ if (app) {
           </div>
         </div>
 
+        <!-- 3D Hand Pose & Pinch Telemetry (M1.3) -->
+        <div style="background: #020617; border-radius: 8px; padding: 1.25rem; border: 1px solid #1e293b;">
+          <h2 style="font-size: 1.1rem; margin: 0 0 0.75rem 0;">3D Hand Pose & Pinch Telemetry (M1.3)</h2>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem;">
+            <div style="background: #0f172a; padding: 0.75rem; border-radius: 6px; border: 1px solid #334155;">
+              <div style="font-size: 0.75rem; color: #94a3b8;">PINCH DISTANCE</div>
+              <div id="val-pinch-dist" style="font-size: 1.2rem; font-weight: bold; color: #38bdf8;">0.45</div>
+              <div id="val-pinch-state" style="font-size: 0.75rem; color: #f59e0b;">OPEN (RELEASED)</div>
+            </div>
+            <div style="background: #0f172a; padding: 0.75rem; border-radius: 6px; border: 1px solid #334155;">
+              <div style="font-size: 0.75rem; color: #94a3b8;">PALM ORIENTATION</div>
+              <div id="val-palm-facing" style="font-size: 1.1rem; font-family: monospace; color: #4ade80;">FACING CAMERA</div>
+              <div style="font-size: 0.75rem; color: #64748b;">Normal vector Z &lt; 0</div>
+            </div>
+            <div style="background: #0f172a; padding: 0.75rem; border-radius: 6px; border: 1px solid #334155;">
+              <div style="font-size: 0.75rem; color: #94a3b8;">FINGERS EXTENDED</div>
+              <div id="val-fingers-count" style="font-size: 1.2rem; font-weight: bold; color: #a78bfa;">5 / 5</div>
+              <div id="val-gesture-name" style="font-size: 0.75rem; color: #94a3b8;">OPEN PALM</div>
+            </div>
+            <div style="background: #0f172a; padding: 0.75rem; border-radius: 6px; border: 1px solid #334155;">
+              <div style="font-size: 0.75rem; color: #94a3b8;">PINCH CONTACT (X, Y)</div>
+              <div id="val-pinch-point" style="font-size: 1.1rem; font-family: monospace; color: #38bdf8;">(0.50, 0.60)</div>
+              <div style="font-size: 0.75rem; color: #64748b;">Screen NDC [0, 1]</div>
+            </div>
+          </div>
+        </div>
+
         <!-- Windows Native Mouse Injection Controller -->
         <div style="background: #020617; border-radius: 8px; padding: 1.25rem; border: 1px solid #1e293b;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
@@ -122,10 +151,18 @@ if (app) {
   const irisOffsetVal = document.getElementById('val-iris-offset') as HTMLDivElement;
   const headPoseVal = document.getElementById('val-head-pose') as HTMLDivElement;
 
+  const pinchDistVal = document.getElementById('val-pinch-dist') as HTMLDivElement;
+  const pinchStateVal = document.getElementById('val-pinch-state') as HTMLDivElement;
+  const palmFacingVal = document.getElementById('val-palm-facing') as HTMLDivElement;
+  const fingersCountVal = document.getElementById('val-fingers-count') as HTMLDivElement;
+  const gestureNameVal = document.getElementById('val-gesture-name') as HTMLDivElement;
+  const pinchPointVal = document.getElementById('val-pinch-point') as HTMLDivElement;
+
   const cameraManager = new VideoStreamManager({ width: 1280, height: 720, frameRate: 60 });
   const mockGenerator = new MockStreamGenerator({ width: 1280, height: 720 });
   const mouseBridge = new DesktopMouseBridge();
   const faceLandmarker = new FaceLandmarkerService();
+  const handLandmarker = new HandLandmarkerService();
 
   let simTimer: number | null = null;
   let procTimer: number | null = null;
@@ -172,11 +209,11 @@ if (app) {
 
   btnStartCamera.addEventListener('click', async () => {
     try {
-      log('Requesting camera permissions & initializing MediaPipe FaceLandmarker...');
+      log('Requesting camera & initializing Face + Hand Landmarkers...');
       setStatus('INITIALIZING', '#ca8a04', '#fef08a');
       await cameraManager.start();
       await cameraManager.attachTo(videoElement);
-      await faceLandmarker.init();
+      await Promise.all([faceLandmarker.init(), handLandmarker.init()]);
 
       videoElement.style.display = 'block';
       simCanvas.style.display = 'none';
@@ -186,13 +223,19 @@ if (app) {
       btnStartSim.style.display = 'none';
 
       setStatus('STREAMING LIVE', '#16a34a', '#bbf7d0');
-      log('WebCam stream & FaceLandmarker active at 60 FPS.');
+      log('WebCam stream & Vision pipelines active at 60 FPS.');
 
       const processLoop = () => {
         if (cameraManager.isStreaming()) {
-          const summary = faceLandmarker.processVideoFrame(videoElement, performance.now());
-          if (summary) {
-            updateTelemetry(summary);
+          const now = performance.now();
+          const faceSummary = faceLandmarker.processVideoFrame(videoElement, now);
+          if (faceSummary) {
+            updateFaceTelemetry(faceSummary);
+          }
+
+          const hands = handLandmarker.processVideoFrame(videoElement, now);
+          if (hands && hands.length > 0) {
+            updateHandTelemetry(hands[0]);
           }
         }
         procTimer = requestAnimationFrame(processLoop);
@@ -224,8 +267,14 @@ if (app) {
       const eyeY = 0.5 + 0.2 * Math.sin(t);
       const isBlink = Math.sin(t * 3) < -0.85;
 
+      const isPinch = Math.sin(t * 2) > 0.4;
+      const handX = 0.5 + 0.25 * Math.sin(t * 1.5);
+      const handY = 0.6 + 0.15 * Math.cos(t * 1.5);
+
       mockGenerator.renderSyntheticFrame({
         eyeGazeNorm: { x: eyeX, y: eyeY },
+        handIndexTipNorm: { x: handX, y: handY },
+        isPinching: isPinch,
       });
 
       // Update telemetry for simulated stream
@@ -242,6 +291,16 @@ if (app) {
       irisOffsetVal.textContent = `(${normX.toFixed(2)}, ${normY.toFixed(2)})`;
       headPoseVal.textContent = `${(normX * 15).toFixed(0)}° / ${(normY * 10).toFixed(0)}° / 0°`;
 
+      // Hand simulated telemetry
+      const pinchDist = isPinch ? 0.03 : 0.45;
+      pinchDistVal.textContent = pinchDist.toFixed(2);
+      pinchStateVal.textContent = isPinch ? 'PINCHING (ACTIVE)' : 'OPEN (RELEASED)';
+      pinchStateVal.style.color = isPinch ? '#22c55e' : '#f59e0b';
+      palmFacingVal.textContent = 'FACING CAMERA';
+      fingersCountVal.textContent = isPinch ? '3 / 5' : '5 / 5';
+      gestureNameVal.textContent = isPinch ? 'PINCH' : 'OPEN PALM';
+      pinchPointVal.textContent = `(${handX.toFixed(2)}, ${handY.toFixed(2)})`;
+
       simTimer = requestAnimationFrame(tick);
     };
     simTimer = requestAnimationFrame(tick);
@@ -251,6 +310,7 @@ if (app) {
   btnStop.addEventListener('click', () => {
     cameraManager.stop();
     faceLandmarker.close();
+    handLandmarker.close();
     if (simTimer !== null) {
       cancelAnimationFrame(simTimer);
       simTimer = null;
@@ -271,7 +331,7 @@ if (app) {
     log('Stream stopped.');
   });
 
-  function updateTelemetry(summary: any) {
+  function updateFaceTelemetry(summary: any) {
     const leftOffset = EyeGeometry.calculateNormalizedIrisOffset(summary.leftEye);
     const leftEar = summary.leftEye.opennessRatio * 0.17 + 0.15;
     const rightEar = summary.rightEye.opennessRatio * 0.17 + 0.15;
@@ -287,5 +347,21 @@ if (app) {
 
     irisOffsetVal.textContent = `(${leftOffset.x.toFixed(2)}, ${leftOffset.y.toFixed(2)})`;
     headPoseVal.textContent = `${summary.yaw.toFixed(0)}° / ${summary.pitch.toFixed(0)}° / ${summary.roll.toFixed(0)}°`;
+  }
+
+  function updateHandTelemetry(pose: any) {
+    const pinch = HandGeometry.calculatePinch(pose.landmarks);
+    const fingers = HandGeometry.calculateFingersExtended(pose.landmarks);
+    const normal = HandGeometry.calculatePalmNormal(pose.landmarks, pose.handedness);
+
+    const isPinch = pinch.normalizedDistance < 0.08;
+    pinchDistVal.textContent = pinch.normalizedDistance.toFixed(2);
+    pinchStateVal.textContent = isPinch ? 'PINCHING (ACTIVE)' : 'OPEN (RELEASED)';
+    pinchStateVal.style.color = isPinch ? '#22c55e' : '#f59e0b';
+
+    palmFacingVal.textContent = normal.z < 0 ? 'FACING CAMERA' : 'FACING AWAY';
+    fingersCountVal.textContent = `${fingers.count} / 5`;
+    gestureNameVal.textContent = isPinch ? 'PINCH' : fingers.count === 5 ? 'OPEN PALM' : 'FINGER POSE';
+    pinchPointVal.textContent = `(${pinch.contactScreenPoint.x.toFixed(2)}, ${pinch.contactScreenPoint.y.toFixed(2)})`;
   }
 }
