@@ -182,12 +182,12 @@ namespace EyeHand
             MenuItem openItem = new MenuItem("Settings & Camera Viewport...", (s, e) => LaunchAppWindow());
             menu.MenuItems.Add(openItem);
 
-            MenuItem pyTrackerItem = new MenuItem("Launch Python Eye Tracker (GitHub Engine)...", (s, e) =>
+            MenuItem pyTrackerItem = new MenuItem("Launch Python Eye Tracker (Unified Engine)...", (s, e) =>
             {
                 try
                 {
                     string appDir = AppDomain.CurrentDomain.BaseDirectory;
-                    string pyScript = Path.Combine(appDir, "scripts", "eye_mouse_tracker.py");
+                    string pyScript = Path.Combine(appDir, "main.py");
                     ProcessStartInfo pyPsi = new ProcessStartInfo
                     {
                         FileName = "python",
@@ -476,7 +476,7 @@ namespace EyeHand
         }
 
         /// <summary>
-        /// Starts the vision tracking engine in a hidden, silent background process (zero browser window).
+        /// Starts the vision tracking engine in a background process.
         /// </summary>
         static void StartBackgroundEngine()
         {
@@ -484,6 +484,21 @@ namespace EyeHand
             {
                 if (backgroundProcess != null && !backgroundProcess.HasExited)
                 {
+                    return;
+                }
+
+                string appDir = AppDomain.CurrentDomain.BaseDirectory;
+                string mainPy = Path.Combine(appDir, "main.py");
+                if (File.Exists(mainPy))
+                {
+                    ProcessStartInfo psi = new ProcessStartInfo
+                    {
+                        FileName = "python",
+                        Arguments = "\"" + mainPy + "\"",
+                        WorkingDirectory = appDir,
+                        UseShellExecute = true
+                    };
+                    backgroundProcess = Process.Start(psi);
                     return;
                 }
 
@@ -496,7 +511,7 @@ namespace EyeHand
 
                 string dataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EyeHand68", "AppData");
 
-                ProcessStartInfo psi = new ProcessStartInfo
+                ProcessStartInfo edgePsi = new ProcessStartInfo
                 {
                     FileName = edgePath,
                     Arguments = "--headless=new --use-fake-ui-for-media-stream --autoplay-policy=no-user-gesture-required --no-first-run --no-default-browser-check --disable-search-engine-choice-screen --disable-features=msFirstRunExperience,msEdgeEnableNurturing,msEdgeWelcomePage --disable-fre --user-data-dir=\"" + dataDir + "\" \"" + url + "\"",
@@ -505,7 +520,7 @@ namespace EyeHand
                     UseShellExecute = false
                 };
 
-                backgroundProcess = Process.Start(psi);
+                backgroundProcess = Process.Start(edgePsi);
             }
             catch (Exception ex)
             {

@@ -20,23 +20,22 @@ Operating as an unobtrusive **Windows System Tray background application (`EyeHa
 
 ---
 
-## 2. Windows Executable & System Tray Shell
+## 2. Architecture & Modular Components
 
 ```text
 cc68/
-├── EyeHand.exe                # Double-clickable Windows Executable (runs in System Tray)
-├── build_exe.bat              # One-click Windows build batch script
-├── build_exe.ps1              # Automated build pipeline script
+├── main.py                    # Unified application orchestrating all 5 components
+├── run.bat                    # 1-Click Windows batch launcher
+├── EyeHand.exe                # Windows System Tray Executable
+├── eyehand/                   # Clean, Modular Python Architecture
+│   ├── __init__.py            # Package entry point exporting all 5 components
+│   ├── tracker.py             # Component 1: Vision Tracker (Irises + Nose anchor, head pose eliminated)
+│   ├── calibration.py         # Component 2: 5-Point Calibration & 100% Screen Reach Matrix
+│   ├── filters.py             # Component 3: One Euro Filter & 1.0s Stare Dwell Controller
+│   ├── overlay.py             # Component 4: Transparent Click-Through Figma Cursor Overlay
+│   └── mouse.py               # Component 5: Physical OS Mouse Driver & Blink Click
 ├── scripts/
-│   └── Launcher.cs            # Native C# System Tray shell + Win32 OS mouse injection bridge
-├── docs/                      # Comprehensive engineering documentation
-│   ├── MASTER_TASK_CHECKLIST.md
-│   ├── PROJECT_OVERVIEW.md
-│   ├── ARCHITECTURE.md
-│   ├── TECH_STACK.md
-│   ├── GESTURE_TAXONOMY.md
-│   ├── CALIBRATION_GUIDE.md
-│   └── API_REFERENCE.md
+│   └── Launcher.cs            # Native C# System Tray launcher
 ├── packages/
 │   ├── core/                  # Math, 1€ filter, event bus, types, DesktopMouseBridge (@cc68/core)
 │   ├── vision/                # WebCam capture & MediaPipe pipelines (@cc68/vision)
@@ -49,26 +48,28 @@ cc68/
 
 ## 3. Quick Start
 
-### Building and Running the Desktop `.exe`
+### 1-Click Desktop Launcher
 ```bash
-# Build the native Windows executable
-.\build_exe.bat
+# Launch EyeHand directly (Figma cursor + 1.0s Stare Dwell + Eye/Nose tracking)
+.\run.bat
 
-# Launch EyeHand (docks directly into your Windows System Tray)
-.\EyeHand.exe
+# Or run with Python:
+python main.py
 ```
+
+### Controls & Hotkeys
+- **`[D]`**: Toggle **1.0-Second Stare Dwell Mode** vs **Live Smooth Follow**.
+- **`[C]`**: Run interactive 5-point calibration (Center, 4 Corners) with border reach expansion.
+- **`[Space]`**: Recenter neutral resting gaze anchor.
+- **`[M]`**: Toggle physical Windows OS mouse synchronization.
+- **`[ESC / Q]`**: Exit cleanly.
 
 ### Running Tests & Typechecks
 ```bash
-# Run 19 unit tests
+# Run Vitest test suite (50 tests passing)
 pnpm test
 
-# Typecheck workspace
-pnpm run typecheck
-```
-
-### Type Checking
-```bash
+# Typecheck TypeScript packages
 pnpm run typecheck
 ```
 
