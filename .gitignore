@@ -37,6 +37,12 @@ pnpm-debug.log*
 .DS_Store
 Thumbs.db
 
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.npy
+
 # Playwright
 /test-results/
 /playwright-report/

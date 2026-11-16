@@ -2,6 +2,23 @@
 
 All notable changes to the EyeHand (`cc68`) project will be documented in this file.
 
+## [0.15.0] - 2026-11-16 (Integrated Proven GitHub Eye-Controlled-Mouse Engine)
+### Added
+- **Vendored GitHub Repository (`external/eye-controlled-mouse/`)**:
+  - Cloned and integrated the popular open-source **`Tahsan-Habib/eye-controlled-mouse`** repository directly into `external/eye-controlled-mouse/`.
+  - Includes original `eye_cursor.py`, 9-point calibration system, and MediaPipe face landmarker architecture.
+- **Dedicated Eye & Nose Cursor Controller (`scripts/eye_mouse_tracker.py`)**:
+  - Engineered an upgraded tracker leveraging the GitHub project's MediaPipe + One Euro Filter pipeline, customized for user requirements:
+    - **Pure Eyes & Nose Tracking**: Refined Iris landmarks (468–477) relative to eye canthi combined with nose tip anchor, strictly eliminating head pitch/yaw/roll.
+    - **1-Second Stare Dwell Lock**: Moves the cursor only when fixating at a target position for 1.0 second; stays rock constant otherwise.
+    - **Full-Screen Coverage**: Extended dynamic range gain (1.65x) to reach all 4 borders and corners of the display.
+    - **Win32 Bridge Integration**: Dispatches gaze coordinates and stare progress directly to `EyeHand.exe` (`http://localhost:6868/api/mouse/move`) to drive the desktop Figma multiplayer cursor overlay.
+    - **Blink-to-Click**: Eye Aspect Ratio (EAR) blink detection with cooldown to simulate OS mouse clicks.
+- **System Tray & Batch Launchers**:
+  - Added "Launch Python Eye Tracker (GitHub Engine)..." to `EyeHand.exe` System Tray context menu.
+  - Added `run-python-tracker.bat` for one-click launching in Windows.
+  - Downloaded offline `face_landmarker.task` model asset.
+
 ## [0.14.1] - 2026-11-16 (Single-Instance Mutex & Port 6868 Socket Conflict Resolution)
 ### Fixed
 - **Single-Instance Mutex Guard (`scripts/Launcher.cs`)**:

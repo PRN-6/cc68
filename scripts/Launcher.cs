@@ -182,6 +182,28 @@ namespace EyeHand
             MenuItem openItem = new MenuItem("Settings & Camera Viewport...", (s, e) => LaunchAppWindow());
             menu.MenuItems.Add(openItem);
 
+            MenuItem pyTrackerItem = new MenuItem("Launch Python Eye Tracker (GitHub Engine)...", (s, e) =>
+            {
+                try
+                {
+                    string appDir = AppDomain.CurrentDomain.BaseDirectory;
+                    string pyScript = Path.Combine(appDir, "scripts", "eye_mouse_tracker.py");
+                    ProcessStartInfo pyPsi = new ProcessStartInfo
+                    {
+                        FileName = "python",
+                        Arguments = "\"" + pyScript + "\"",
+                        UseShellExecute = true,
+                        WorkingDirectory = appDir
+                    };
+                    Process.Start(pyPsi);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Could not launch Python tracker: " + ex.Message, "EyeHand", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+            });
+            menu.MenuItems.Add(pyTrackerItem);
+
             menu.MenuItems.Add("-");
 
             menu.MenuItems.Add(new MenuItem("Exit EyeHand", (s, e) =>
