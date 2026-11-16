@@ -1,4 +1,4 @@
-import { CORE_VERSION, DesktopMouseBridge } from '@cc68/core';
+import { CORE_VERSION, DesktopMouseBridge, OneEuroFilter2D, Vector2 } from '@cc68/core';
 import {
   VISION_VERSION,
   VideoStreamManager,
@@ -14,41 +14,74 @@ console.log(`EyeHand Web initialized with Core v${CORE_VERSION}, Vision v${VISIO
 const app = document.getElementById('app');
 if (app) {
   app.innerHTML = `
-    <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 860px; margin: 1.5rem auto; padding: 2rem; background: #0f172a; border-radius: 12px; color: #f8fafc; border: 1px solid #1e293b;">
+    <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 900px; margin: 1.5rem auto; padding: 2rem; background: #0f172a; border-radius: 12px; color: #f8fafc; border: 1px solid #1e293b; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);">
       <header style="margin-bottom: 1.5rem; text-align: center;">
-        <h1 style="font-size: 2rem; margin: 0 0 0.5rem 0; color: #38bdf8;">EyeHand (cc68)</h1>
-        <p style="color: #94a3b8; margin: 0;">Task M1.2: MediaPipe Face Landmarker & Iris Tracking</p>
-        <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap;">
-          <span style="background: #1e293b; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; color: #38bdf8;">Core v${CORE_VERSION}</span>
-          <span style="background: #1e293b; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; color: #4ade80;">Vision v${VISION_VERSION}</span>
-          <span id="bridge-status-badge" style="background: #1e293b; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; color: #f59e0b;">Checking Native Desktop Bridge...</span>
+        <h1 style="font-size: 2.2rem; margin: 0 0 0.5rem 0; color: #38bdf8; letter-spacing: -0.5px;">EyeHand (cc68)</h1>
+        <p style="color: #94a3b8; margin: 0; font-size: 1rem;">Multimodal Gaze & 3D Hand Tracking Windows Desktop Controller</p>
+        <div style="margin-top: 0.75rem; display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap;">
+          <span style="background: #1e293b; padding: 3px 10px; border-radius: 6px; font-size: 0.8rem; color: #38bdf8;">Core v${CORE_VERSION}</span>
+          <span style="background: #1e293b; padding: 3px 10px; border-radius: 6px; font-size: 0.8rem; color: #4ade80;">Vision v${VISION_VERSION}</span>
+          <span id="bridge-status-badge" style="background: #1e293b; padding: 3px 10px; border-radius: 6px; font-size: 0.8rem; color: #f59e0b; border: 1px solid #334155;">Connecting to System Tray Bridge...</span>
         </div>
       </header>
 
       <div style="display: grid; grid-template-columns: 1fr; gap: 1.25rem;">
-        <!-- Camera Stream Controller -->
+        <!-- Windows Native Mouse Injection Controller -->
+        <div style="background: #020617; border-radius: 8px; padding: 1.25rem; border: 1px solid #1e293b;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <span style="font-size: 1.2rem;">🖱️</span>
+              <h2 style="font-size: 1.1rem; margin: 0; color: #f8fafc;">Windows OS Mouse Cursor Control</h2>
+            </div>
+            <span id="screen-res-badge" style="font-size: 0.8rem; color: #64748b; background: #0f172a; padding: 2px 8px; border-radius: 4px;">Detecting Screen...</span>
+          </div>
+          
+          <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.5rem;">
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; background: #1e293b; padding: 8px 14px; border-radius: 6px; font-size: 0.9rem; color: #38bdf8; font-weight: 600; border: 1px solid #334155; user-select: none;">
+              <input type="checkbox" id="chk-live-cursor" style="cursor: pointer; width: 18px; height: 18px; accent-color: #38bdf8;" />
+              <span>Enable Live OS Cursor Control</span>
+            </label>
+            <button id="btn-test-cursor" style="background: #334155; color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 500;">
+              Center Cursor
+            </button>
+            <button id="btn-test-click" style="background: #334155; color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 500;">
+              Test Left Click
+            </button>
+          </div>
+          <div id="bridge-helper-note" style="font-size: 0.8rem; color: #94a3b8; margin-top: 0.5rem;">
+            💡 <em>When EyeHand.exe runs, it docks into your Windows System Tray (notification overflow menu) and enables OS-level cursor driving.</em>
+          </div>
+        </div>
+
+        <!-- Camera Stream Controller & Viewport -->
         <div style="background: #020617; border-radius: 8px; padding: 1.25rem; border: 1px solid #1e293b;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
             <h2 style="font-size: 1.1rem; margin: 0;">Camera Stream & Vision Viewport</h2>
-            <span id="stream-status" style="padding: 2px 8px; border-radius: 9999px; font-size: 0.75rem; background: #334155; color: #94a3b8;">DISCONNECTED</span>
+            <span id="stream-status" style="padding: 2px 10px; border-radius: 9999px; font-size: 0.75rem; background: #334155; color: #94a3b8; font-weight: 600;">DISCONNECTED</span>
           </div>
 
-          <div style="position: relative; width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 6px; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+          <div id="viewport-container" style="position: relative; width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center; border: 1px solid #334155;">
             <video id="camera-preview" style="width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); display: none;"></video>
             <canvas id="sim-canvas" style="width: 100%; height: 100%; display: none;"></canvas>
-            <div id="video-placeholder" style="color: #64748b; font-size: 0.9rem; text-align: center;">
-              Camera is inactive.<br/>Click "Start Webcam" or "Start Simulator" below.
+            <div id="video-placeholder" style="color: #64748b; font-size: 0.95rem; text-align: center; line-height: 1.6;">
+              Camera stream is inactive.<br/>
+              Click <strong style="color: #38bdf8;">"Start Webcam"</strong> to use your real camera, or <strong style="color: #0d9488;">"Start Simulator"</strong> to test hands-free.
+            </div>
+            
+            <!-- Real-time Visual Gaze Reticle -->
+            <div id="gaze-reticle" style="position: absolute; width: 32px; height: 32px; border: 2.5px solid #38bdf8; border-radius: 50%; pointer-events: none; transform: translate(-50%, -50%); display: none; box-shadow: 0 0 14px rgba(56, 189, 248, 0.7); z-index: 20; transition: border-color 0.1s, transform 0.05s ease-out;">
+              <div style="position: absolute; top: 50%; left: 50%; width: 6px; height: 6px; background: #38bdf8; border-radius: 50%; transform: translate(-50%, -50%);"></div>
             </div>
           </div>
 
           <div style="display: flex; gap: 0.75rem; margin-top: 1rem; flex-wrap: wrap;">
-            <button id="btn-start-camera" style="background: #0284c7; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 500;">
+            <button id="btn-start-camera" style="background: #0284c7; color: white; border: none; padding: 10px 18px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.9rem;">
               Start Webcam
             </button>
-            <button id="btn-start-sim" style="background: #0d9488; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 500;">
+            <button id="btn-start-sim" style="background: #0d9488; color: white; border: none; padding: 10px 18px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.9rem;">
               Start Simulator
             </button>
-            <button id="btn-stop" style="background: #ef4444; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 500; display: none;">
+            <button id="btn-stop" style="background: #ef4444; color: white; border: none; padding: 10px 18px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.9rem; display: none;">
               Stop Stream
             </button>
           </div>
@@ -108,23 +141,7 @@ if (app) {
           </div>
         </div>
 
-        <!-- Windows Native Mouse Injection Controller -->
-        <div style="background: #020617; border-radius: 8px; padding: 1.25rem; border: 1px solid #1e293b;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-            <h2 style="font-size: 1.1rem; margin: 0;">Windows OS Mouse Injection (EyeHand.exe)</h2>
-            <span id="screen-res-badge" style="font-size: 0.8rem; color: #64748b;">Screen: Detecting...</span>
-          </div>
-          <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-            <button id="btn-test-cursor" style="background: #475569; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">
-              Test Move Cursor (Center)
-            </button>
-            <button id="btn-test-click" style="background: #475569; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">
-              Test Left Click
-            </button>
-          </div>
-        </div>
-
-        <div id="camera-log" style="padding: 0.75rem; background: #020617; border-radius: 6px; font-family: monospace; font-size: 0.8rem; color: #94a3b8; border: 1px solid #1e293b; min-height: 24px;">
+        <div id="camera-log" style="padding: 0.75rem 1rem; background: #020617; border-radius: 6px; font-family: monospace; font-size: 0.85rem; color: #94a3b8; border: 1px solid #1e293b; min-height: 24px;">
           Ready.
         </div>
       </div>
@@ -134,10 +151,15 @@ if (app) {
   const videoElement = document.getElementById('camera-preview') as HTMLVideoElement;
   const simCanvas = document.getElementById('sim-canvas') as HTMLCanvasElement;
   const placeholder = document.getElementById('video-placeholder') as HTMLDivElement;
+  const viewportContainer = document.getElementById('viewport-container') as HTMLDivElement;
+  const gazeReticle = document.getElementById('gaze-reticle') as HTMLDivElement;
+
   const statusBadge = document.getElementById('stream-status') as HTMLSpanElement;
   const bridgeBadge = document.getElementById('bridge-status-badge') as HTMLSpanElement;
   const screenBadge = document.getElementById('screen-res-badge') as HTMLSpanElement;
   const logEl = document.getElementById('camera-log') as HTMLDivElement;
+
+  const chkLiveCursor = document.getElementById('chk-live-cursor') as HTMLInputElement;
   const btnStartCamera = document.getElementById('btn-start-camera') as HTMLButtonElement;
   const btnStartSim = document.getElementById('btn-start-sim') as HTMLButtonElement;
   const btnStop = document.getElementById('btn-stop') as HTMLButtonElement;
@@ -164,8 +186,15 @@ if (app) {
   const faceLandmarker = new FaceLandmarkerService();
   const handLandmarker = new HandLandmarkerService();
 
+  // One-Euro adaptive filter for jitter-free cursor movements
+  const cursorFilter = new OneEuroFilter2D({ minCutoff: 1.2, beta: 0.015, dCutoff: 1.0 });
+
   let simTimer: number | null = null;
   let procTimer: number | null = null;
+  let isConnectedToNative = false;
+  let screenDims = { width: window.innerWidth, height: window.innerHeight };
+  let isDispatchingMove = false;
+  let lastPinchState = false;
 
   const log = (msg: string) => {
     logEl.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
@@ -177,29 +206,94 @@ if (app) {
     statusBadge.style.color = colorText;
   };
 
-  // Check desktop bridge status on load
-  mouseBridge.checkAvailability().then((avail) => {
-    if (avail) {
-      bridgeBadge.textContent = 'Native Desktop .EXE: CONNECTED';
-      bridgeBadge.style.color = '#4ade80';
-      mouseBridge.getScreenDimensions().then((dim) => {
-        if (dim) screenBadge.textContent = `Windows Screen: ${dim.width}x${dim.height}px`;
-      });
-      log('Connected to EyeHand.exe Win32 desktop mouse engine.');
+  // Update on-screen visual reticle inside viewport
+  const updateReticle = (normX: number, normY: number, isPinch: boolean) => {
+    if (!gazeReticle || !viewportContainer) return;
+    gazeReticle.style.display = 'block';
+    const rect = viewportContainer.getBoundingClientRect();
+    const px = normX * rect.width;
+    const py = normY * rect.height;
+    gazeReticle.style.left = `${px}px`;
+    gazeReticle.style.top = `${py}px`;
+
+    if (isPinch) {
+      gazeReticle.style.borderColor = '#4ade80';
+      gazeReticle.style.boxShadow = '0 0 16px rgba(74, 222, 128, 0.9)';
+      gazeReticle.style.transform = 'translate(-50%, -50%) scale(0.85)';
     } else {
-      bridgeBadge.textContent = 'Web Browser Sandbox Mode';
-      bridgeBadge.style.color = '#94a3b8';
-      screenBadge.textContent = `Browser Viewport: ${window.innerWidth}x${window.innerHeight}px`;
-      log('Running in browser sandbox mode. Launch EyeHand.exe for OS-level mouse control.');
+      gazeReticle.style.borderColor = '#38bdf8';
+      gazeReticle.style.boxShadow = '0 0 14px rgba(56, 189, 248, 0.7)';
+      gazeReticle.style.transform = 'translate(-50%, -50%) scale(1.0)';
     }
-  });
+  };
+
+  // Dispatch coordinates to OS-level mouse cursor via Win32 bridge
+  const dispatchLivePointer = async (normX: number, normY: number, isPinch: boolean, timestamp: number) => {
+    // Clamp to valid [0, 1] bounds
+    const clampedX = Math.max(0, Math.min(1, normX));
+    const clampedY = Math.max(0, Math.min(1, normY));
+
+    // Update the visual viewport reticle
+    updateReticle(clampedX, clampedY, isPinch);
+
+    // If live cursor is enabled and EyeHand.exe Win32 bridge is active, drive OS cursor
+    if (chkLiveCursor && chkLiveCursor.checked && isConnectedToNative) {
+      const rawTargetX = clampedX * screenDims.width;
+      const rawTargetY = clampedY * screenDims.height;
+      const filtered = cursorFilter.filter(new Vector2(rawTargetX, rawTargetY), timestamp);
+
+      if (!isDispatchingMove) {
+        isDispatchingMove = true;
+        mouseBridge.moveCursor(filtered.x, filtered.y).finally(() => {
+          isDispatchingMove = false;
+        });
+      }
+
+      // Handle pinch click / drag state transitions
+      if (isPinch && !lastPinchState) {
+        mouseBridge.mouseDown();
+        log('Pinch DOWN dispatched to Windows OS.');
+      } else if (!isPinch && lastPinchState) {
+        mouseBridge.mouseUp();
+        log('Pinch UP dispatched to Windows OS.');
+      }
+    }
+
+    lastPinchState = isPinch;
+  };
+
+  // Poll desktop bridge availability to detect EyeHand.exe launch
+  const checkBridge = async () => {
+    const avail = await mouseBridge.checkAvailability();
+    if (avail !== isConnectedToNative) {
+      isConnectedToNative = avail;
+      if (avail) {
+        bridgeBadge.textContent = 'Native Desktop .EXE: CONNECTED';
+        bridgeBadge.style.color = '#4ade80';
+        bridgeBadge.style.borderColor = '#22c55e';
+        const dim = await mouseBridge.getScreenDimensions();
+        if (dim) {
+          screenDims = dim;
+          screenBadge.textContent = `Windows Display: ${dim.width}x${dim.height}px`;
+        }
+        log('Connected to EyeHand.exe Win32 desktop mouse engine in System Tray.');
+      } else {
+        bridgeBadge.textContent = 'Web Sandbox Mode (EyeHand.exe not detected)';
+        bridgeBadge.style.color = '#94a3b8';
+        bridgeBadge.style.borderColor = '#334155';
+        screenBadge.textContent = `Browser Viewport: ${window.innerWidth}x${window.innerHeight}px`;
+      }
+    }
+  };
+
+  checkBridge();
+  setInterval(checkBridge, 2000);
 
   btnTestCursor.addEventListener('click', async () => {
-    const screen = await mouseBridge.getScreenDimensions();
-    const cx = screen ? screen.width / 2 : window.innerWidth / 2;
-    const cy = screen ? screen.height / 2 : window.innerHeight / 2;
+    const cx = screenDims.width / 2;
+    const cy = screenDims.height / 2;
     await mouseBridge.moveCursor(cx, cy);
-    log(`Dispatched OS cursor move to (${cx}, ${cy}).`);
+    log(`Dispatched OS cursor move to center (${cx}, ${cy}).`);
   });
 
   btnTestClick.addEventListener('click', async () => {
@@ -225,17 +319,32 @@ if (app) {
       setStatus('STREAMING LIVE', '#16a34a', '#bbf7d0');
       log('WebCam stream & Vision pipelines active at 60 FPS.');
 
+      let currentPinch = false;
+
       const processLoop = () => {
         if (cameraManager.isStreaming()) {
           const now = performance.now();
-          const faceSummary = faceLandmarker.processVideoFrame(videoElement, now);
-          if (faceSummary) {
-            updateFaceTelemetry(faceSummary);
-          }
 
+          // 1. Hand tracking & pinch detection
           const hands = handLandmarker.processVideoFrame(videoElement, now);
           if (hands && hands.length > 0) {
             updateHandTelemetry(hands[0]);
+            const pinch = HandGeometry.calculatePinch(hands[0].landmarks);
+            currentPinch = pinch.normalizedDistance < 0.08;
+          } else {
+            currentPinch = false;
+          }
+
+          // 2. Face tracking & iris gaze estimation
+          const faceSummary = faceLandmarker.processVideoFrame(videoElement, now);
+          if (faceSummary) {
+            updateFaceTelemetry(faceSummary);
+            // Normalized iris displacement [-1, 1] mapped to normalized screen [0, 1]
+            // Note: Camera feed is mirrored, so horizontal displacement is inverted for screen mapping
+            const irisOffset = EyeGeometry.calculateNormalizedIrisOffset(faceSummary.leftEye);
+            const normX = 0.5 - irisOffset.x * 0.75;
+            const normY = 0.5 + irisOffset.y * 0.75;
+            dispatchLivePointer(normX, normY, currentPinch, now);
           }
         }
         procTimer = requestAnimationFrame(processLoop);
@@ -301,6 +410,9 @@ if (app) {
       gestureNameVal.textContent = isPinch ? 'PINCH' : 'OPEN PALM';
       pinchPointVal.textContent = `(${handX.toFixed(2)}, ${handY.toFixed(2)})`;
 
+      // Dispatch live pointer to drive reticle and OS mouse cursor
+      dispatchLivePointer(eyeX, eyeY, isPinch, performance.now());
+
       simTimer = requestAnimationFrame(tick);
     };
     simTimer = requestAnimationFrame(tick);
@@ -319,6 +431,9 @@ if (app) {
       cancelAnimationFrame(procTimer);
       procTimer = null;
     }
+
+    if (gazeReticle) gazeReticle.style.display = 'none';
+    cursorFilter.reset();
 
     videoElement.style.display = 'none';
     simCanvas.style.display = 'none';

@@ -152,3 +152,4 @@ export class HandLandmarkerService {
     this.isInitialized = false;
   }
 }
+

@@ -2,6 +2,16 @@
 
 All notable changes to the EyeHand (`cc68`) project will be documented in this file.
 
+## [0.6.0] - 2026-11-16 (Live Windows OS Cursor Driving & System Tray Integration)
+### Added
+- Real-time continuous OS mouse cursor driving loop connecting iris gaze coordinates and synthetic simulations directly to `DesktopMouseBridge`.
+- `OneEuroFilter2D` signal filtering applied dynamically to cursor movements to eliminate high-frequency hand/gaze tremor while preserving instantaneous saccadic responsiveness.
+- Continuous pinch-to-click and pinch-and-drag state transitions mapped to native Win32 `mouse_event` (`MOUSEEVENTF_LEFTDOWN` / `MOUSEEVENTF_LEFTUP`).
+- Visual real-time gaze reticle overlaid on the viewport with dynamic color transitions (blue for fixation/tracking, green for active pinch).
+- Interactive dashboard toggle "Enable Live OS Cursor Control" with real-time bridge status indicator.
+- Auto-reconnect polling (2 Hz) detecting when `EyeHand.exe` starts in the Windows System Tray without needing a page refresh.
+- Rebuilt `EyeHand.exe` executable with updated embedded dashboard assets and verified Win32 `SetCursorPos` and `mouse_event` API endpoints.
+
 ## [0.5.0] - 2026-11-16 (Milestone M1: Computer Vision & Sensor Pipeline - Task M1.4 Complete)
 ### Added
 - `SyntheticLandmarkGenerator` producing deterministic, synchronized 478 face mesh / iris landmarks and 21 3D hand joints.
@@ -33,23 +43,20 @@ All notable changes to the EyeHand (`cc68`) project will be documented in this f
 ## [0.2.0] - 2026-11-15 (Milestone M1: Computer Vision & Sensor Pipeline - Task M1.1)
 ### Added
 - Standalone native Windows Desktop Executable (`EyeHand.exe`) compiled via `scripts/Launcher.cs` and `build_exe.ps1`.
-- Windows System Tray (`NotifyIcon`) integration: EyeHand docks into the system tray with a glowing custom tray icon, balloon tip alerts, and background execution.
-- System Tray Context Menu: Open EyeHand Dashboard, Toggle Tracking (Active/Paused), Calibrate Gaze, and Exit.
-- Win32 OS-level mouse injection bridge (`SetCursorPos`, `mouse_event`) allowing touchless control over the actual Windows OS cursor outside the browser.
-- `@cc68/core` client `DesktopMouseBridge` class with automated availability detection and screen dimension querying.
-- `@cc68/vision` package initialized with `@mediapipe/tasks-vision` dependency.
-- `VideoStreamManager` implementing robust WebCam stream lifecycle: acquisition, device enumeration, pause/resume, canvas frame capture, and error mapping (`PERMISSION_DENIED`, `NOT_FOUND`, `OVERCONSTRAINED`, `UNSUPPORTED`).
-- `MockStreamGenerator` for rendering synthetic moving eye gaze and hand landmarks on a 60 FPS simulated canvas for headless CI testing and hardware-free environments.
-- Unit test suite for `VideoStreamManager` and `MockStreamGenerator` (16 passing tests across workspace).
-- Interactive Camera Stream Controller in `apps/web` allowing live webcam switching, stream monitoring, and simulated feed preview.
+- Windows System Tray integration (`NotifyIcon`) featuring custom procedural eye icon, tray balloon notifications, and background process persistence.
+- Embedded local HTTP Win32 Mouse Injection server on `http://localhost:6868/api` with endpoints for `SetCursorPos` and `mouse_event`.
+- Cross-origin enabled Win32 mouse controller API:
+  - `GET /api/mouse/move?x={x}&y={y}`
+  - `GET /api/mouse/click?button={left|right}`
+  - `GET /api/mouse/down` & `/api/mouse/up`
+  - `GET /api/screen` returning primary display resolution and tray state.
+- `VideoStreamManager` with camera permission handling, device enumeration, and lifecycle controls.
+- `MockStreamGenerator` for offline synthetic canvas rendering.
 
 ## [0.1.0] - 2026-11-15 (Milestone M0: Project Foundation)
 ### Added
-- Monorepo structure initialized with `pnpm-workspace.yaml` and strict TypeScript configuration.
-- `@cc68/core` package implementing 2D/3D vector mathematics, coordinate transformations, and bounding box queries.
-- Casiez et al. CHI 2012 One-Euro adaptive filter (`OneEuroFilter1D`, `OneEuroFilter2D`, `OneEuroFilter3D`) for low-latency jitter suppression.
-- High-performance, type-safe `EyeHandEventBus` and domain event interfaces.
-- Landmark types for MediaPipe 21 hand joints, face iris points, and head orientation.
-- Gaze and gesture taxonomy definitions (Look-and-Pinch interaction model).
-- Full documentation suite (`MASTER_TASK_CHECKLIST.md`, `PROJECT_OVERVIEW.md`, `ARCHITECTURE.md`, `TECH_STACK.md`, `GESTURE_TAXONOMY.md`, `CALIBRATION_GUIDE.md`, `API_REFERENCE.md`, `DEVELOPMENT.md`, `TESTING.md`, `CONTRIBUTING.md`).
-- 100% passing Vitest test suite for vector math, jitter reduction, and event bus pub/sub.
+- Initial monorepo scaffolding with pnpm workspaces and strict TypeScript configuration.
+- `@cc68/core` package with 2D/3D vectors, transform utilities, and Casiez et al. CHI 2012 One-Euro Filter.
+- `EyeHandEventBus` typed event dispatching system.
+- `DesktopMouseBridge` client connector for native OS mouse injection.
+- Complete documentation suite (`MASTER_TASK_CHECKLIST.md`, `ARCHITECTURE.md`, `TECH_STACK.md`, etc.).

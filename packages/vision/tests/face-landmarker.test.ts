@@ -132,3 +132,4 @@ describe('FaceLandmarkerService', () => {
     expect(typeof summary.roll).toBe('number');
   });
 });
+

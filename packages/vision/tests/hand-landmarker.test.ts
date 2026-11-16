@@ -129,3 +129,4 @@ describe('HandLandmarkerService', () => {
     expect(pose.timestamp).toBe(2000);
   });
 });
+

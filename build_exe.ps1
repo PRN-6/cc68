@@ -1,4 +1,5 @@
 # EyeHand (cc68) - Windows Executable Build Pipeline
+$ErrorActionPreference = 'Stop'
 Write-Host "================================================================" -ForegroundColor Cyan
 Write-Host "         EYEHAND (cc68) - BUILDING WINDOWS EXECUTABLE           " -ForegroundColor Cyan
 Write-Host "================================================================" -ForegroundColor Cyan
@@ -6,7 +7,7 @@ Write-Host "================================================================" -F
 $root = $PSScriptRoot
 if (-not $root) { $root = Get-Location }
 
-# 1. Compile Web / UI Assets
+# 1. Compile Packages & Web / UI Assets
 Write-Host "1. Building TypeScript & Web UI Assets..." -ForegroundColor Green
 pnpm --filter web build
 
@@ -20,4 +21,3 @@ Write-Host "SUCCESS! Windows Executable Created:" -ForegroundColor Green
 Get-Item "$root\EyeHand.exe" | Format-Table Name, Length, LastWriteTime
 Write-Host "You can double-click 'EyeHand.exe' to launch EyeHand on Windows!" -ForegroundColor Yellow
 Write-Host "================================================================" -ForegroundColor Cyan
-

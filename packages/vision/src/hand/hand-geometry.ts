@@ -206,3 +206,4 @@ export class HandGeometry {
     return rawPoints.map((pt) => new Vector2(pt.x, pt.y));
   }
 }
+

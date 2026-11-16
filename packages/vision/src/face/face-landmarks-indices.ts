@@ -47,3 +47,4 @@ export const FACE_LANDMARKS_INDICES = {
     RIGHT_MOUTH_CORNER: 291,
   },
 } as const;
+
