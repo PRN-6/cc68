@@ -149,6 +149,7 @@ namespace EyeHand
             menu.MenuItems.Add(cursorOverlayItem);
 
             MenuItem styleMenu = new MenuItem("Cursor Style");
+            styleMenu.MenuItems.Add(new MenuItem("Figma Cursor (Default)", (s, e) => { if (customCursor != null) customCursor.SetStyle("figma"); }));
             styleMenu.MenuItems.Add(new MenuItem("Spatial Reticle", (s, e) => { if (customCursor != null) customCursor.SetStyle("reticle"); }));
             styleMenu.MenuItems.Add(new MenuItem("Laser Dot", (s, e) => { if (customCursor != null) customCursor.SetStyle("dot"); }));
             styleMenu.MenuItems.Add(new MenuItem("Crosshair", (s, e) => { if (customCursor != null) customCursor.SetStyle("crosshair"); }));
@@ -606,10 +607,10 @@ namespace EyeHand
             CursorY = Screen.PrimaryScreen.Bounds.Height / 2;
             IsOverlayVisible = true;
             isPinching = false;
-            cursorSize = 68;
-            cursorStyle = "reticle";
-            primaryColor = Color.FromArgb(56, 189, 248); // Electric Sky Blue
-            pinchColor = Color.FromArgb(34, 197, 94);     // Emerald Green
+            cursorSize = 88;
+            cursorStyle = "figma";
+            primaryColor = Color.FromArgb(162, 89, 255); // Signature Figma Purple (#A259FF)
+            pinchColor = Color.FromArgb(16, 185, 129);    // Vibrant Emerald Green (#10B981)
             pulsePhase = 0f;
 
             this.FormBorderStyle = FormBorderStyle.None;
@@ -617,7 +618,7 @@ namespace EyeHand
             this.TopMost = true;
             this.StartPosition = FormStartPosition.Manual;
             this.Size = new Size(cursorSize, cursorSize);
-            this.Location = new Point(CursorX - cursorSize / 2, CursorY - cursorSize / 2);
+            this.Location = new Point(CursorX - 18, CursorY - 18);
             this.BackColor = Color.Magenta;
             this.TransparencyKey = Color.Magenta;
             this.DoubleBuffered = true;
@@ -668,8 +669,11 @@ namespace EyeHand
 
             if (this.IsHandleCreated && !this.IsDisposed && this.IsOverlayVisible)
             {
-                int targetLeft = x - cursorSize / 2;
-                int targetTop = y - cursorSize / 2;
+                int hotspotX = (cursorStyle == "figma") ? 18 : (cursorSize / 2);
+                int hotspotY = (cursorStyle == "figma") ? 18 : (cursorSize / 2);
+
+                int targetLeft = x - hotspotX;
+                int targetTop = y - hotspotY;
                 if (targetLeft != this.Left || targetTop != this.Top)
                 {
                     SetWindowPos(this.Handle, HWND_TOPMOST, targetLeft, targetTop, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE);
@@ -693,6 +697,9 @@ namespace EyeHand
         public void SetVisibility(bool visible)
         {
             IsOverlayVisible = visible;
+            int hotspotX = (cursorStyle == "figma") ? 18 : (cursorSize / 2);
+            int hotspotY = (cursorStyle == "figma") ? 18 : (cursorSize / 2);
+
             if (this.InvokeRequired)
             {
                 this.BeginInvoke(new Action(() =>
@@ -700,7 +707,7 @@ namespace EyeHand
                     this.Visible = visible;
                     if (visible)
                     {
-                        SetWindowPos(this.Handle, HWND_TOPMOST, CursorX - cursorSize / 2, CursorY - cursorSize / 2, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+                        SetWindowPos(this.Handle, HWND_TOPMOST, CursorX - hotspotX, CursorY - hotspotY, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
                     }
                 }));
             }
@@ -709,7 +716,7 @@ namespace EyeHand
                 this.Visible = visible;
                 if (visible)
                 {
-                    SetWindowPos(this.Handle, HWND_TOPMOST, CursorX - cursorSize / 2, CursorY - cursorSize / 2, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+                    SetWindowPos(this.Handle, HWND_TOPMOST, CursorX - hotspotX, CursorY - hotspotY, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
                 }
             }
         }
@@ -770,9 +777,132 @@ namespace EyeHand
             g.Clear(Color.Magenta);
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
 
             int cx = cursorSize / 2;
             int cy = cursorSize / 2;
+
+            // 1. DEFAULT STYLE: "figma" - Authentic Multiplayer Figma Cursor
+            if (cursorStyle == "figma" || string.IsNullOrEmpty(cursorStyle))
+            {
+                int tipX = 18;
+                int tipY = 18;
+
+                Color fillColor = isPinching ? pinchColor : primaryColor;
+
+                // Drop shadow
+                PointF[] shadowArrow = new PointF[]
+                {
+                    new PointF(tipX + 1.5f, tipY + 2.5f),
+                    new PointF(tipX + 1.5f, tipY + 24.5f),
+                    new PointF(tipX + 7f, tipY + 19f),
+                    new PointF(tipX + 12f, tipY + 29f),
+                    new PointF(tipX + 16f, tipY + 27f),
+                    new PointF(tipX + 11f, tipY + 17f),
+                    new PointF(tipX + 18.5f, tipY + 17f)
+                };
+                using (SolidBrush shadowBrush = new SolidBrush(Color.FromArgb(50, 0, 0, 0)))
+                {
+                    g.FillPolygon(shadowBrush, shadowArrow);
+                }
+
+                // Figma Arrow Polygon
+                PointF[] arrow = new PointF[]
+                {
+                    new PointF(tipX, tipY),                           // Tip (Hotspot)
+                    new PointF(tipX, tipY + 22f),                     // Left vertical edge down
+                    new PointF(tipX + 5.5f, tipY + 16.5f),            // Inner notch
+                    new PointF(tipX + 10.5f, tipY + 26.5f),           // Stem bottom-left
+                    new PointF(tipX + 14.5f, tipY + 24.5f),           // Stem bottom-right
+                    new PointF(tipX + 9.5f, tipY + 14.5f),            // Stem top-right
+                    new PointF(tipX + 17f, tipY + 14.5f)              // Right wing edge
+                };
+
+                // Solid fill with crisp white outline
+                using (SolidBrush fillBrush = new SolidBrush(fillColor))
+                {
+                    g.FillPolygon(fillBrush, arrow);
+                }
+                using (Pen borderPen = new Pen(Color.White, 1.8f))
+                {
+                    borderPen.LineJoin = LineJoin.Round;
+                    g.DrawPolygon(borderPen, arrow);
+                }
+
+                // Signature Figma Name Badge Pill ("You")
+                float badgeX = tipX + 14f;
+                float badgeY = tipY + 18f;
+                float badgeW = 34f;
+                float badgeH = 17f;
+                float radius = 4f;
+
+                using (GraphicsPath pillPath = new GraphicsPath())
+                {
+                    pillPath.AddArc(badgeX, badgeY, radius * 2, radius * 2, 180, 90);
+                    pillPath.AddArc(badgeX + badgeW - radius * 2, badgeY, radius * 2, radius * 2, 270, 90);
+                    pillPath.AddArc(badgeX + badgeW - radius * 2, badgeY + badgeH - radius * 2, radius * 2, radius * 2, 0, 90);
+                    pillPath.AddArc(badgeX, badgeY + badgeH - radius * 2, radius * 2, radius * 2, 90, 90);
+                    pillPath.CloseFigure();
+
+                    // Pill drop shadow
+                    using (SolidBrush pillShadow = new SolidBrush(Color.FromArgb(40, 0, 0, 0)))
+                    {
+                        g.TranslateTransform(1f, 1.5f);
+                        g.FillPath(pillShadow, pillPath);
+                        g.ResetTransform();
+                    }
+
+                    // Pill body
+                    using (SolidBrush pillBrush = new SolidBrush(fillColor))
+                    {
+                        g.FillPath(pillBrush, pillPath);
+                    }
+                    using (Pen pillBorder = new Pen(Color.White, 1.2f))
+                    {
+                        g.DrawPath(pillBorder, pillPath);
+                    }
+                }
+
+                // Pill text "You"
+                using (Font font = new Font("Segoe UI", 7.5f, FontStyle.Bold))
+                using (SolidBrush textBrush = new SolidBrush(Color.White))
+                using (StringFormat sf = new StringFormat())
+                {
+                    sf.Alignment = StringAlignment.Center;
+                    sf.LineAlignment = StringAlignment.Center;
+                    RectangleF textRect = new RectangleF(badgeX, badgeY, badgeW, badgeH);
+                    g.DrawString("You", font, textBrush, textRect, sf);
+                }
+
+                // Pinch / Click energetic ripple animation
+                if (isPinching)
+                {
+                    float rip = (float)(Math.Sin(pulsePhase * 3.5) * 0.5 + 0.5);
+                    int ripR = 10 + (int)(rip * 14);
+                    int ripAlpha = (int)((1.0f - rip) * 200);
+                    if (ripAlpha > 0)
+                    {
+                        using (Pen ripPen = new Pen(Color.FromArgb(ripAlpha, pinchColor), 2.0f))
+                        {
+                            g.DrawEllipse(ripPen, tipX - ripR, tipY - ripR, ripR * 2, ripR * 2);
+                        }
+                    }
+                }
+
+                // 1-Second Stare Dwell Countdown Arc (charging circle around pointer tip)
+                if (dwellProgress > 0.02f)
+                {
+                    using (Pen progPen = new Pen(Color.FromArgb(245, 158, 11), 3.0f))
+                    {
+                        progPen.StartCap = LineCap.Round;
+                        progPen.EndCap = LineCap.Round;
+                        int pr = 13;
+                        float sweep = Math.Min(360f, dwellProgress * 360f);
+                        g.DrawArc(progPen, tipX - pr, tipY - pr, pr * 2, pr * 2, -90f, sweep);
+                    }
+                }
+                return;
+            }
 
             if (cursorStyle == "dot")
             {

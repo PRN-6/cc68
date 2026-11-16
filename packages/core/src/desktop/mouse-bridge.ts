@@ -13,7 +13,7 @@ export interface CustomCursorMoveOptions {
 
 export interface CustomCursorConfig {
   size?: number;
-  style?: 'reticle' | 'dot' | 'crosshair';
+  style?: 'figma' | 'reticle' | 'dot' | 'crosshair';
   color?: string;
 }
 

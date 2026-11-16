@@ -2,6 +2,20 @@
 
 All notable changes to the EyeHand (`cc68`) project will be documented in this file.
 
+## [0.14.0] - 2026-11-16 (Iconic Multiplayer Figma Cursor Style)
+### Added
+- **Default Figma Cursor Design (`CustomCursorOverlay`)**:
+  - Implemented the iconic **Figma multiplayer collaborative cursor** as the default style across Windows:
+    - **Classic Tilted Arrow Polygon**: Sharp tip hotspot positioned precisely at target coordinate `(x, y)` for exact clicking.
+    - **High-Contrast Styling**: Vibrant Figma Purple (`#A259FF`) with a crisp 1.8px white border and soft elevation drop shadow.
+    - **Signature "You" Pill Tag**: Rounded name badge pill pinned alongside the cursor stem.
+    - **Pinch / Click Feedback**: Shifts to Emerald Green (`#10B981`) with an energetic pulse ripple upon pinch-click.
+    - **1-Second Stare Dwell Progress Arc**: Circular Amber Gold progress arc sweeps clockwise (0° to 360°) around the pointer tip.
+- **System Tray & Viewport Integration**:
+  - Added "Figma Cursor (Default)" to the System Tray context menu and diagnostics viewport selector.
+  - Extended `CustomCursorConfig.style` with `'figma'` across `@cc68/core` desktop bridge.
+- Recompiled `EyeHand.exe` and web distribution bundle.
+
 ## [0.13.1] - 2026-11-16 (Edge Dwell Jitter Immunity & Full Screen Reach Calibration)
 ### Added
 - **Edge Dwell Jitter Immunity Buffer (`GazeDwellController`)**:

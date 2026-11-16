@@ -56,7 +56,8 @@ if (app) {
           <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; padding-top: 0.5rem; border-top: 1px solid #1e293b;">
             <span style="font-size: 0.8rem; color: #94a3b8;">Cursor Style:</span>
             <select id="sel-cursor-style" style="background: #1e293b; color: #f8fafc; border: 1px solid #334155; padding: 5px 10px; border-radius: 5px; font-size: 0.85rem; cursor: pointer;">
-              <option value="reticle" selected>Spatial Hologram Reticle</option>
+              <option value="figma" selected>Normal Figma Cursor</option>
+              <option value="reticle">Spatial Hologram Reticle</option>
               <option value="dot">Precision Laser Dot</option>
               <option value="crosshair">Tactical Crosshair</option>
             </select>
@@ -401,7 +402,7 @@ if (app) {
 
   // Change Cursor Style
   selCursorStyle.addEventListener('change', async () => {
-    const style = selCursorStyle.value as 'reticle' | 'dot' | 'crosshair';
+    const style = selCursorStyle.value as 'figma' | 'reticle' | 'dot' | 'crosshair';
     await mouseBridge.configureCustomCursor({ style });
     log(`Custom cursor style changed to: ${style}`);
   });
