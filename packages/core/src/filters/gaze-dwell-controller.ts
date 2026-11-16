@@ -24,7 +24,7 @@ export interface GazeDwellConfig {
 
 export const DEFAULT_GAZE_DWELL_CONFIG: GazeDwellConfig = {
   stareDurationMs: 1000,
-  stareRadiusPixels: 70,
+  stareRadiusPixels: 110,
   minTargetDistancePixels: 40,
 };
 
@@ -75,6 +75,7 @@ export class GazeDwellController {
   private currentCursorPos: Vector2 | null = null;
   private candidateTarget: Vector2 | null = null;
   private dwellStartTimeMs: number | null = null;
+  private consecutiveOutlierFrames: number = 0;
 
   constructor(config: Partial<GazeDwellConfig> = {}) {
     this.config = { ...DEFAULT_GAZE_DWELL_CONFIG, ...config };
@@ -87,6 +88,7 @@ export class GazeDwellController {
     this.currentCursorPos = new Vector2(pos.x, pos.y);
     this.candidateTarget = null;
     this.dwellStartTimeMs = null;
+    this.consecutiveOutlierFrames = 0;
   }
 
   /**
@@ -146,6 +148,7 @@ export class GazeDwellController {
     const distToCandidate = gaze.distanceTo(this.candidateTarget);
 
     if (distToCandidate <= this.config.stareRadiusPixels) {
+      this.consecutiveOutlierFrames = 0;
       // User is continuously staring at this specific position!
       // Smoothly refine candidate centroid (running average)
       this.candidateTarget = this.candidateTarget.lerp(gaze, 0.05);
@@ -169,7 +172,7 @@ export class GazeDwellController {
         };
       }
 
-      // Still counting down to 2 seconds: CURSOR DOES NOT MOVE!
+      // Still counting down to 1 second: CURSOR DOES NOT MOVE!
       return {
         cursorPosition: this.currentCursorPos,
         candidateTarget: this.candidateTarget,
@@ -179,10 +182,31 @@ export class GazeDwellController {
         isStaring: true,
       };
     } else {
-      // Gaze wandered away before 2 seconds were reached:
+      // Check if this is momentary noise near the candidate boundary (<= 2.0x radius)
+      // vs a deliberate glance away to a completely different screen region
+      const isNearCandidateNoise = distToCandidate <= this.config.stareRadiusPixels * 2.0;
+
+      if (isNearCandidateNoise) {
+        this.consecutiveOutlierFrames++;
+        if (this.consecutiveOutlierFrames <= 3) {
+          const elapsed = timestampMs - this.dwellStartTimeMs;
+          const progress = Math.min(1.0, elapsed / this.config.stareDurationMs);
+          return {
+            cursorPosition: this.currentCursorPos,
+            candidateTarget: this.candidateTarget,
+            dwellProgress: progress,
+            elapsedMs: elapsed,
+            hasMoved: false,
+            isStaring: true,
+          };
+        }
+      }
+
+      // Gaze truly wandered away to a new target:
       // Reset countdown to new target! CURSOR DOES NOT MOVE!
       this.candidateTarget = new Vector2(gaze.x, gaze.y);
       this.dwellStartTimeMs = timestampMs;
+      this.consecutiveOutlierFrames = 0;
 
       return {
         cursorPosition: this.currentCursorPos,

@@ -2,32 +2,32 @@ import { FaceLandmarksSummary, Vector2 } from '@cc68/core';
 import { EyeGeometry } from './eye-geometry';
 
 export interface EyeNoseTrackerConfig {
-  /** Sensitivity multiplier for eye iris gaze in X axis (default: 2.2) */
+  /** Sensitivity multiplier for eye iris gaze in X axis (default: 3.0) */
   eyeSensitivityX: number;
-  /** Sensitivity multiplier for eye iris gaze in Y axis (default: 2.6) */
+  /** Sensitivity multiplier for eye iris gaze in Y axis (default: 3.4) */
   eyeSensitivityY: number;
-  /** Sensitivity multiplier for nose tip displacement in X axis (default: 4.2) */
+  /** Sensitivity multiplier for nose tip displacement in X axis (default: 5.8) */
   noseSensitivityX: number;
-  /** Sensitivity multiplier for nose tip displacement in Y axis (default: 4.5) */
+  /** Sensitivity multiplier for nose tip displacement in Y axis (default: 6.2) */
   noseSensitivityY: number;
-  /** Deadzone threshold for nose movement to ignore involuntary head tremor (default: 0.010) */
+  /** Deadzone threshold for nose movement to ignore involuntary head tremor (default: 0.008) */
   noseDeadzone: number;
   /** Weight of eye iris gaze vs nose tracking (0.0 = nose only, 1.0 = eye only, default: 0.55) */
   eyeBlendWeight: number;
-  /** Overall screen range expansion gain to effortlessly reach all 4 display borders (default: 1.35) */
+  /** Overall screen range expansion gain to effortlessly reach all 4 display borders (default: 1.65) */
   screenRangeGain: number;
   /** Whether to auto-calibrate resting anchor on first valid face detection (default: true) */
   autoCalibrateOnFirstFrame: boolean;
 }
 
 export const DEFAULT_EYE_NOSE_CONFIG: EyeNoseTrackerConfig = {
-  eyeSensitivityX: 2.2,
-  eyeSensitivityY: 2.6,
-  noseSensitivityX: 4.2,
-  noseSensitivityY: 4.5,
-  noseDeadzone: 0.010,
+  eyeSensitivityX: 3.0,
+  eyeSensitivityY: 3.4,
+  noseSensitivityX: 5.8,
+  noseSensitivityY: 6.2,
+  noseDeadzone: 0.008,
   eyeBlendWeight: 0.55,
-  screenRangeGain: 1.35,
+  screenRangeGain: 1.65,
   autoCalibrateOnFirstFrame: true,
 };
 

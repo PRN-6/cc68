@@ -151,9 +151,9 @@ if (app) {
           <div style="display: flex; gap: 0.75rem; align-items: center; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid #1e293b; flex-wrap: wrap;">
             <span style="font-size: 0.8rem; color: #94a3b8;">Screen Coverage Reach:</span>
             <div style="display: flex; gap: 0.25rem;">
-              <button class="btn-range" data-gain="1.1" style="background: #1e293b; color: #cbd5e1; border: 1px solid #334155; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer;">Standard (1.1x)</button>
-              <button class="btn-range" data-gain="1.45" style="background: #0284c7; color: white; border: 1px solid #38bdf8; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer; font-weight: bold;">Full Desktop (1.45x)</button>
-              <button class="btn-range" data-gain="1.85" style="background: #1e293b; color: #cbd5e1; border: 1px solid #334155; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer;">Ultra-Wide (1.85x)</button>
+              <button class="btn-range" data-gain="1.25" style="background: #1e293b; color: #cbd5e1; border: 1px solid #334155; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer;">Relaxed (1.25x)</button>
+              <button class="btn-range" data-gain="1.65" style="background: #0284c7; color: white; border: 1px solid #38bdf8; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer; font-weight: bold;">Full Screen (1.65x)</button>
+              <button class="btn-range" data-gain="2.20" style="background: #1e293b; color: #cbd5e1; border: 1px solid #334155; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer;">Maximum Reach (2.20x)</button>
             </div>
             <span style="font-size: 0.75rem; color: #64748b; margin-left: auto;">Effortlessly reaches all 4 borders &amp; corners of your display</span>
           </div>
@@ -260,7 +260,7 @@ if (app) {
   // "move the cursor when user sees a specific position and stares at it for 1 sec, until then don't move"
   const dwellController = new GazeDwellController({
     stareDurationMs: 1000, // 1.0 second
-    stareRadiusPixels: 75,
+    stareRadiusPixels: 120,
     minTargetDistancePixels: 45,
   });
 
@@ -442,7 +442,7 @@ if (app) {
       target.style.borderColor = '#38bdf8';
       target.style.fontWeight = 'bold';
 
-      const gain = parseFloat(target.getAttribute('data-gain') || '1.45');
+      const gain = parseFloat(target.getAttribute('data-gain') || '1.65');
       eyeNoseTracker.setRangeGain(gain);
       log(`Screen coverage gain set to ${gain}x (Full display reach).`);
     });

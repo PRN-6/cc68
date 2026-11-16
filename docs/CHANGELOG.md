@@ -2,6 +2,17 @@
 
 All notable changes to the EyeHand (`cc68`) project will be documented in this file.
 
+## [0.13.1] - 2026-11-16 (Edge Dwell Jitter Immunity & Full Screen Reach Calibration)
+### Added
+- **Edge Dwell Jitter Immunity Buffer (`GazeDwellController`)**:
+  - Expanded `stareRadiusPixels` from 75px to **120px** to comfortably enclose higher-gain webcam fluctuations at the outer perimeter of the screen.
+  - Implemented momentary noise buffer (tolerates up to 3 transient outlier frames near candidate boundary) so single-frame webcam noise spikes never reset the 1-second stare countdown at the display borders.
+  - Large intentional saccadic jumps (> 2.0x radius) still reset the stare timer immediately.
+- **Enhanced Gaze Gain Defaults (`EyeNoseGazeTracker`)**:
+  - Boosted sensitivity to `eyeSensitivityX: 3.0`, `eyeSensitivityY: 3.4`, `noseSensitivityX: 5.8`, `noseSensitivityY: 6.2`, and `screenRangeGain: 1.65x`.
+  - Guarantees natural eye glances and subtle nose shifts reach **100% of all 4 borders (0.0 to 1.0)** and corners effortlessly.
+- Rebuilt production bundle and redeployed daemon engine.
+
 ## [0.13.0] - 2026-11-16 (Full Screen Display Reach & Dynamic Range Expansion)
 ### Added
 - **Full Display Reach & Range Expansion (`EyeNoseGazeTracker`)**:
