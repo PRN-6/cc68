@@ -2,6 +2,14 @@
 
 All notable changes to the EyeHand (`cc68`) project will be documented in this file.
 
+## [0.5.0] - 2026-11-16 (Milestone M1: Computer Vision & Sensor Pipeline - Task M1.4 Complete)
+### Added
+- `SyntheticLandmarkGenerator` producing deterministic, synchronized 478 face mesh / iris landmarks and 21 3D hand joints.
+- Realistic interaction test scenarios: `FIXATION`, `LOOK_AND_PINCH_CLICK`, `PINCH_AND_DRAG`, `BLINK`, and `CIRCULAR_GAZE`.
+- Continuous frame streaming utility (`createStream`) supporting customizable FPS rates and clean callback unbinding.
+- Unit test suite for `SyntheticLandmarkGenerator` (35 passing unit tests total across workspace).
+- Milestone M1 (Computer Vision & Sensor Pipeline) marked 100% complete.
+
 ## [0.4.0] - 2026-11-16 (Milestone M1: Computer Vision & Sensor Pipeline - Task M1.3)
 ### Added
 - `HandLandmarkerService` orchestrating MediaPipe 21-joint 3D hand tracking with left/right hand classification.

@@ -9,7 +9,7 @@
 | Milestone | Title | Status | Completion Date |
 |---|---|---|---|
 | **M0** | **Project Foundation & Tooling** | **COMPLETED** | Nov 15, 2026 |
-| **M1** | **Computer Vision & Sensor Pipeline** | **IN PROGRESS (M1.1, M1.2, M1.3 Done)** | Nov 16, 2026 |
+| **M1** | **Computer Vision & Sensor Pipeline** | **COMPLETED** | Nov 16, 2026 |
 | **M2** | Gaze Estimation & 9-Point Calibration Engine | *Queued* | — |
 | **M3** | 3D Hand Pose & Spatial Gesture Detection | *Queued* | — |
 | **M4** | Eye-Hand Multimodal Fusion & Interaction | *Queued* | — |
@@ -88,9 +88,11 @@
   - [x] Compute outward palm normal vector perpendicular to palm plane (Wrist, Index MCP, Pinky MCP).
   - [x] Classify extended fingers (Thumb, Index, Middle, Ring, Pinky) and calculate bounding sphere.
   - [x] Add unit test suite verifying scale calculation, pinch contact metrics, palm normal, and finger extension.
-- [ ] **Task M1.4: Synthetic Landmark Stream Generator**
-  - [ ] Implement headless deterministic synthetic landmark generator.
-  - [ ] Provide scripted trajectories for eyes and hands for automated CI tests without webcam.
+- [x] **Task M1.4: Synthetic Landmark Stream Generator**
+  - [x] Implement headless deterministic synthetic landmark generator (`SyntheticLandmarkGenerator`).
+  - [x] Support reproducible interaction scenarios (`FIXATION`, `LOOK_AND_PINCH_CLICK`, `PINCH_AND_DRAG`, `BLINK`, `CIRCULAR_GAZE`).
+  - [x] Provide continuous 60 FPS synthetic frame streaming (`createStream`) emitting full 478-point face/iris and 21-joint hand poses.
+  - [x] Author unit tests verifying deterministic trajectory generation, blink collapse, and pinch cycles.
 
 ---
 
