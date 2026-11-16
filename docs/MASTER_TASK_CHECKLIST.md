@@ -9,7 +9,7 @@
 | Milestone | Title | Status | Completion Date |
 |---|---|---|---|
 | **M0** | **Project Foundation & Tooling** | **COMPLETED** | Nov 15, 2026 |
-| **M1** | **Computer Vision & Sensor Pipeline** | **IN PROGRESS (Task M1.1 Done)** | Nov 15, 2026 |
+| **M1** | **Computer Vision & Sensor Pipeline** | **IN PROGRESS (M1.1 & M1.2 Done)** | Nov 16, 2026 |
 | **M2** | Gaze Estimation & 9-Point Calibration Engine | *Queued* | — |
 | **M3** | 3D Hand Pose & Spatial Gesture Detection | *Queued* | — |
 | **M4** | Eye-Hand Multimodal Fusion & Interaction | *Queued* | — |
@@ -73,10 +73,13 @@
   - [x] Full stream lifecycle controls (`start`, `stop`, `pause`, `resume`, `isStreaming`).
   - [x] Synthetic mock stream generator for headless/offline testing (`MockStreamGenerator`).
   - [x] Unit test suite verifying stream lifecycle, device filtering, and error mappings.
-- [ ] **Task M1.2: MediaPipe Face Landmarker & Iris Tracking**
-  - [ ] Integrate `@mediapipe/tasks-vision` FaceLandmarker.
-  - [ ] Extract 478 3D facial landmarks and 10 iris landmark points (468–477).
-  - [ ] Calculate Eye Aspect Ratio (EAR) for blink detection and eyelid state.
+- [x] **Task M1.2: MediaPipe Face Landmarker & Iris Tracking**
+  - [x] Integrate `@mediapipe/tasks-vision` FaceLandmarker with WebAssembly and GPU acceleration.
+  - [x] Extract 478 3D facial landmarks and 10 iris points (468–472 left iris, 473–477 right iris).
+  - [x] Calculate Eye Aspect Ratio (EAR) based on Soukupová & Čech (2016) for real-time blink detection.
+  - [x] Calculate normalized 2D iris displacement $[-1, 1]$ relative to inner and outer canthi and eyelid boundaries.
+  - [x] Estimate 3D head pose orientation (pitch, yaw, roll) using key facial anchor points.
+  - [x] Add unit test suite verifying EAR blink thresholds, iris offset tracking, and head pose estimation.
 - [ ] **Task M1.3: MediaPipe Hand Landmarker & Pose Tracking**
   - [ ] Integrate `@mediapipe/tasks-vision` HandLandmarker.
   - [ ] Extract 21 3D hand joints per hand (left / right classification).

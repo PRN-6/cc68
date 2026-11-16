@@ -1,15 +1,21 @@
 import { CORE_VERSION, DesktopMouseBridge } from '@cc68/core';
-import { VISION_VERSION, VideoStreamManager, MockStreamGenerator } from '@cc68/vision';
+import {
+  VISION_VERSION,
+  VideoStreamManager,
+  MockStreamGenerator,
+  FaceLandmarkerService,
+  EyeGeometry,
+} from '@cc68/vision';
 
 console.log(`EyeHand Web initialized with Core v${CORE_VERSION}, Vision v${VISION_VERSION}`);
 
 const app = document.getElementById('app');
 if (app) {
   app.innerHTML = `
-    <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 840px; margin: 2rem auto; padding: 2rem; background: #0f172a; border-radius: 12px; color: #f8fafc; border: 1px solid #1e293b;">
-      <header style="margin-bottom: 2rem; text-align: center;">
+    <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 860px; margin: 1.5rem auto; padding: 2rem; background: #0f172a; border-radius: 12px; color: #f8fafc; border: 1px solid #1e293b;">
+      <header style="margin-bottom: 1.5rem; text-align: center;">
         <h1 style="font-size: 2rem; margin: 0 0 0.5rem 0; color: #38bdf8;">EyeHand (cc68)</h1>
-        <p style="color: #94a3b8; margin: 0;">Multimodal Gaze & Hand Desktop Executable Application</p>
+        <p style="color: #94a3b8; margin: 0;">Task M1.2: MediaPipe Face Landmarker & Iris Tracking</p>
         <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap;">
           <span style="background: #1e293b; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; color: #38bdf8;">Core v${CORE_VERSION}</span>
           <span style="background: #1e293b; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; color: #4ade80;">Vision v${VISION_VERSION}</span>
@@ -17,11 +23,11 @@ if (app) {
         </div>
       </header>
 
-      <div style="display: grid; grid-template-columns: 1fr; gap: 1.5rem;">
+      <div style="display: grid; grid-template-columns: 1fr; gap: 1.25rem;">
         <!-- Camera Stream Controller -->
         <div style="background: #020617; border-radius: 8px; padding: 1.25rem; border: 1px solid #1e293b;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-            <h2 style="font-size: 1.1rem; margin: 0;">Camera Stream Controller</h2>
+            <h2 style="font-size: 1.1rem; margin: 0;">Camera Stream & Vision Viewport</h2>
             <span id="stream-status" style="padding: 2px 8px; border-radius: 9999px; font-size: 0.75rem; background: #334155; color: #94a3b8;">DISCONNECTED</span>
           </div>
 
@@ -46,16 +52,39 @@ if (app) {
           </div>
         </div>
 
+        <!-- Face & Iris Tracking Telemetry -->
+        <div style="background: #020617; border-radius: 8px; padding: 1.25rem; border: 1px solid #1e293b;">
+          <h2 style="font-size: 1.1rem; margin: 0 0 0.75rem 0;">Eye Tracking & Iris Telemetry (M1.2)</h2>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem;">
+            <div style="background: #0f172a; padding: 0.75rem; border-radius: 6px; border: 1px solid #334155;">
+              <div style="font-size: 0.75rem; color: #94a3b8;">LEFT EYE (EAR)</div>
+              <div id="val-left-ear" style="font-size: 1.2rem; font-weight: bold; color: #38bdf8;">0.30</div>
+              <div id="val-left-blink" style="font-size: 0.75rem; color: #4ade80;">OPEN</div>
+            </div>
+            <div style="background: #0f172a; padding: 0.75rem; border-radius: 6px; border: 1px solid #334155;">
+              <div style="font-size: 0.75rem; color: #94a3b8;">RIGHT EYE (EAR)</div>
+              <div id="val-right-ear" style="font-size: 1.2rem; font-weight: bold; color: #38bdf8;">0.30</div>
+              <div id="val-right-blink" style="font-size: 0.75rem; color: #4ade80;">OPEN</div>
+            </div>
+            <div style="background: #0f172a; padding: 0.75rem; border-radius: 6px; border: 1px solid #334155;">
+              <div style="font-size: 0.75rem; color: #94a3b8;">IRIS OFFSET (X, Y)</div>
+              <div id="val-iris-offset" style="font-size: 1.1rem; font-family: monospace; color: #a78bfa;">(0.00, 0.00)</div>
+              <div style="font-size: 0.75rem; color: #64748b;">Normalized [-1, 1]</div>
+            </div>
+            <div style="background: #0f172a; padding: 0.75rem; border-radius: 6px; border: 1px solid #334155;">
+              <div style="font-size: 0.75rem; color: #94a3b8;">HEAD POSE (Y, P, R)</div>
+              <div id="val-head-pose" style="font-size: 1.1rem; font-family: monospace; color: #f59e0b;">0° / 0° / 0°</div>
+              <div style="font-size: 0.75rem; color: #64748b;">Yaw / Pitch / Roll</div>
+            </div>
+          </div>
+        </div>
+
         <!-- Windows Native Mouse Injection Controller -->
         <div style="background: #020617; border-radius: 8px; padding: 1.25rem; border: 1px solid #1e293b;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
             <h2 style="font-size: 1.1rem; margin: 0;">Windows OS Mouse Injection (EyeHand.exe)</h2>
             <span id="screen-res-badge" style="font-size: 0.8rem; color: #64748b;">Screen: Detecting...</span>
           </div>
-          <p style="color: #94a3b8; font-size: 0.85rem; margin-top: 0; margin-bottom: 1rem;">
-            When launched via <code style="color: #38bdf8;">EyeHand.exe</code>, this bridge can move and click the actual Windows desktop mouse pointer outside the browser window.
-          </p>
-
           <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
             <button id="btn-test-cursor" style="background: #475569; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">
               Test Move Cursor (Center)
@@ -86,11 +115,20 @@ if (app) {
   const btnTestCursor = document.getElementById('btn-test-cursor') as HTMLButtonElement;
   const btnTestClick = document.getElementById('btn-test-click') as HTMLButtonElement;
 
+  const leftEarVal = document.getElementById('val-left-ear') as HTMLDivElement;
+  const leftBlinkVal = document.getElementById('val-left-blink') as HTMLDivElement;
+  const rightEarVal = document.getElementById('val-right-ear') as HTMLDivElement;
+  const rightBlinkVal = document.getElementById('val-right-blink') as HTMLDivElement;
+  const irisOffsetVal = document.getElementById('val-iris-offset') as HTMLDivElement;
+  const headPoseVal = document.getElementById('val-head-pose') as HTMLDivElement;
+
   const cameraManager = new VideoStreamManager({ width: 1280, height: 720, frameRate: 60 });
   const mockGenerator = new MockStreamGenerator({ width: 1280, height: 720 });
   const mouseBridge = new DesktopMouseBridge();
+  const faceLandmarker = new FaceLandmarkerService();
 
   let simTimer: number | null = null;
+  let procTimer: number | null = null;
 
   const log = (msg: string) => {
     logEl.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
@@ -134,10 +172,11 @@ if (app) {
 
   btnStartCamera.addEventListener('click', async () => {
     try {
-      log('Requesting camera permissions...');
-      setStatus('CONNECTING', '#ca8a04', '#fef08a');
+      log('Requesting camera permissions & initializing MediaPipe FaceLandmarker...');
+      setStatus('INITIALIZING', '#ca8a04', '#fef08a');
       await cameraManager.start();
       await cameraManager.attachTo(videoElement);
+      await faceLandmarker.init();
 
       videoElement.style.display = 'block';
       simCanvas.style.display = 'none';
@@ -147,7 +186,18 @@ if (app) {
       btnStartSim.style.display = 'none';
 
       setStatus('STREAMING LIVE', '#16a34a', '#bbf7d0');
-      log('WebCam stream active at 60 FPS.');
+      log('WebCam stream & FaceLandmarker active at 60 FPS.');
+
+      const processLoop = () => {
+        if (cameraManager.isStreaming()) {
+          const summary = faceLandmarker.processVideoFrame(videoElement, performance.now());
+          if (summary) {
+            updateTelemetry(summary);
+          }
+        }
+        procTimer = requestAnimationFrame(processLoop);
+      };
+      procTimer = requestAnimationFrame(processLoop);
     } catch (err: any) {
       setStatus('ERROR', '#dc2626', '#fecaca');
       log(`Camera Error: ${err.message}`);
@@ -167,19 +217,47 @@ if (app) {
 
     setStatus('SIMULATOR ACTIVE', '#0d9488', '#ccfbf1');
 
+    let t = 0;
     const tick = () => {
-      mockGenerator.renderSyntheticFrame();
+      t += 0.03;
+      const eyeX = 0.5 + 0.3 * Math.cos(t);
+      const eyeY = 0.5 + 0.2 * Math.sin(t);
+      const isBlink = Math.sin(t * 3) < -0.85;
+
+      mockGenerator.renderSyntheticFrame({
+        eyeGazeNorm: { x: eyeX, y: eyeY },
+      });
+
+      // Update telemetry for simulated stream
+      const ear = isBlink ? 0.12 : 0.32;
+      leftEarVal.textContent = ear.toFixed(2);
+      rightEarVal.textContent = ear.toFixed(2);
+      leftBlinkVal.textContent = isBlink ? 'BLINKING' : 'OPEN';
+      leftBlinkVal.style.color = isBlink ? '#ef4444' : '#4ade80';
+      rightBlinkVal.textContent = isBlink ? 'BLINKING' : 'OPEN';
+      rightBlinkVal.style.color = isBlink ? '#ef4444' : '#4ade80';
+
+      const normX = (eyeX - 0.5) * 2;
+      const normY = (eyeY - 0.5) * 2;
+      irisOffsetVal.textContent = `(${normX.toFixed(2)}, ${normY.toFixed(2)})`;
+      headPoseVal.textContent = `${(normX * 15).toFixed(0)}° / ${(normY * 10).toFixed(0)}° / 0°`;
+
       simTimer = requestAnimationFrame(tick);
     };
     simTimer = requestAnimationFrame(tick);
-    log('Synthetic 60 FPS generator active.');
+    log('Synthetic 60 FPS generator active with real-time telemetry.');
   });
 
   btnStop.addEventListener('click', () => {
     cameraManager.stop();
+    faceLandmarker.close();
     if (simTimer !== null) {
       cancelAnimationFrame(simTimer);
       simTimer = null;
+    }
+    if (procTimer !== null) {
+      cancelAnimationFrame(procTimer);
+      procTimer = null;
     }
 
     videoElement.style.display = 'none';
@@ -192,4 +270,22 @@ if (app) {
     setStatus('DISCONNECTED', '#334155', '#94a3b8');
     log('Stream stopped.');
   });
+
+  function updateTelemetry(summary: any) {
+    const leftOffset = EyeGeometry.calculateNormalizedIrisOffset(summary.leftEye);
+    const leftEar = summary.leftEye.opennessRatio * 0.17 + 0.15;
+    const rightEar = summary.rightEye.opennessRatio * 0.17 + 0.15;
+    const leftBlink = EyeGeometry.isBlinking(leftEar);
+    const rightBlink = EyeGeometry.isBlinking(rightEar);
+
+    leftEarVal.textContent = leftEar.toFixed(2);
+    rightEarVal.textContent = rightEar.toFixed(2);
+    leftBlinkVal.textContent = leftBlink ? 'BLINKING' : 'OPEN';
+    leftBlinkVal.style.color = leftBlink ? '#ef4444' : '#4ade80';
+    rightBlinkVal.textContent = rightBlink ? 'BLINKING' : 'OPEN';
+    rightBlinkVal.style.color = rightBlink ? '#ef4444' : '#4ade80';
+
+    irisOffsetVal.textContent = `(${leftOffset.x.toFixed(2)}, ${leftOffset.y.toFixed(2)})`;
+    headPoseVal.textContent = `${summary.yaw.toFixed(0)}° / ${summary.pitch.toFixed(0)}° / ${summary.roll.toFixed(0)}°`;
+  }
 }

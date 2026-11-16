@@ -1,0 +1,49 @@
+/**
+ * MediaPipe 478 FaceMesh & Iris Landmark Indices.
+ */
+export const FACE_LANDMARKS_INDICES = {
+  // Left Eye (Subject's Left - viewer's right)
+  LEFT_EYE: {
+    IRIS_CENTER: 468,
+    IRIS_RIGHT: 469,
+    IRIS_TOP: 470,
+    IRIS_LEFT: 471,
+    IRIS_BOTTOM: 472,
+    OUTER_CORNER: 33,
+    INNER_CORNER: 133,
+    UPPER_LID_PRIMARY: 159,
+    LOWER_LID_PRIMARY: 145,
+    UPPER_LID_SECONDARY_1: 160,
+    LOWER_LID_SECONDARY_1: 144,
+    UPPER_LID_SECONDARY_2: 158,
+    LOWER_LID_SECONDARY_2: 153,
+  },
+
+  // Right Eye (Subject's Right - viewer's left)
+  RIGHT_EYE: {
+    IRIS_CENTER: 473,
+    IRIS_RIGHT: 474,
+    IRIS_TOP: 475,
+    IRIS_LEFT: 476,
+    IRIS_BOTTOM: 477,
+    INNER_CORNER: 362,
+    OUTER_CORNER: 263,
+    UPPER_LID_PRIMARY: 386,
+    LOWER_LID_PRIMARY: 374,
+    UPPER_LID_SECONDARY_1: 387,
+    LOWER_LID_SECONDARY_1: 373,
+    UPPER_LID_SECONDARY_2: 385,
+    LOWER_LID_SECONDARY_2: 380,
+  },
+
+  // Head Pose Key 3D Anchors
+  HEAD_POSE_ANCHORS: {
+    NOSE_TIP: 1,
+    CHIN: 152,
+    FOREHEAD_GLABELLA: 10,
+    LEFT_TEMPLE: 234,
+    RIGHT_TEMPLE: 454,
+    LEFT_MOUTH_CORNER: 61,
+    RIGHT_MOUTH_CORNER: 291,
+  },
+} as const;
