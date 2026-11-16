@@ -881,7 +881,7 @@ namespace EyeHand
                 }
             }
 
-            // 2-Second Stare Dwell Countdown Arc (charges up when user stares at a target)
+            // 1-Second Stare Dwell Countdown Arc (charges up when user stares at a target)
             if (dwellProgress > 0.02f)
             {
                 using (Pen progPen = new Pen(Color.FromArgb(245, 158, 11), 3.0f))

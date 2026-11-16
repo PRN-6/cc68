@@ -246,10 +246,10 @@ if (app) {
     oneEuroBeta: 0.018,
   });
 
-  // 2-Second Stare Dwell Controller:
-  // "move the cursor when user sees a specific position and stares at it for 2 sec, until then don't move"
+  // 1-Second Stare Dwell Controller:
+  // "move the cursor when user sees a specific position and stares at it for 1 sec, until then don't move"
   const dwellController = new GazeDwellController({
-    stareDurationMs: 2000, // 2.0 seconds
+    stareDurationMs: 1000, // 1.0 second
     stareRadiusPixels: 75,
     minTargetDistancePixels: 45,
   });
@@ -287,7 +287,7 @@ if (app) {
       gazeReticle.style.boxShadow = '0 0 16px rgba(74, 222, 128, 0.9)';
       gazeReticle.style.transform = 'translate(-50%, -50%) scale(0.85)';
     } else if (dwellProgress > 0.05) {
-      // Staring at candidate position: charging progress ring up to 2 seconds
+      // Staring at candidate position: charging progress ring up to 1 second
       gazeReticle.style.borderColor = '#f59e0b';
       gazeReticle.style.boxShadow = `0 0 ${12 + dwellProgress * 12}px rgba(245, 158, 11, 0.8)`;
       gazeReticle.style.transform = `translate(-50%, -50%) scale(${1.0 + dwellProgress * 0.25})`;
@@ -309,8 +309,8 @@ if (app) {
     // 1. Stabilize raw gaze with Fixation-Lock
     const stabilized = gazeStabilizer.filter(new Vector2(rawTargetX, rawTargetY), timestamp);
 
-    // 2. Feed to 2-Second Stare Dwell Controller:
-    // Moves the cursor ONLY when the user stares at a specific position for 2 full seconds; until then, does not move!
+    // 2. Feed to 1-Second Stare Dwell Controller:
+    // Moves the cursor ONLY when the user stares at a specific position for 1 full second; until then, does not move!
     const dwell = dwellController.update(stabilized.point, timestamp);
     const activeCursor = dwell.cursorPosition;
 
@@ -318,7 +318,7 @@ if (app) {
     updateReticle(activeCursor.x / screenDims.width, activeCursor.y / screenDims.height, isPinch, dwell.dwellProgress);
 
     if (isConnectedToNative) {
-      // Only dispatch movement to Windows if 2-second stare completed (hasMoved) OR initial placement or charging progress
+      // Only dispatch movement to Windows if 1-second stare completed (hasMoved) OR initial placement or charging progress
       if (dwell.hasMoved || !initialCursorDispatched || dwell.dwellProgress > 0.02) {
         if (!isDispatchingMove) {
           isDispatchingMove = true;
@@ -329,7 +329,7 @@ if (app) {
               isDispatchingMove = false;
             });
           if (dwell.hasMoved) {
-            log(`2-Second Stare confirmed! Cursor moved to (${Math.round(activeCursor.x)}, ${Math.round(activeCursor.y)}).`);
+            log(`1-Second Stare confirmed! Cursor moved to (${Math.round(activeCursor.x)}, ${Math.round(activeCursor.y)}).`);
           }
           initialCursorDispatched = true;
         }

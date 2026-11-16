@@ -2,6 +2,16 @@
 
 All notable changes to the EyeHand (`cc68`) project will be documented in this file.
 
+## [0.12.0] - 2026-11-16 (1-Second Stare Dwell Cursor Movement Engine)
+### Changed
+- **Stare Dwell Duration Adjusted to 1.0 Second**:
+  - Reduced continuous gaze dwell duration from 2.0 seconds to **1.0 second (1000ms)** in `GazeDwellController`.
+  - The cursor remains completely stationary while glancing around. When the user looks at a specific position and **stares continuously for 1 second**, the cursor moves directly to that position.
+  - The circular Amber Gold charging arc around the cursor now completes a full 360° sweep in 1.0 second.
+- **Unit Tests Updated**:
+  - Updated all 3 dwell test suites in `packages/core/tests/gaze-dwell-controller.test.ts` to assert against the 1.0s (1000ms) stare threshold.
+- Recompiled `EyeHand.exe` and web assets.
+
 ## [0.11.0] - 2026-11-16 (Pure Eye & Nose Gaze Tracking Engine with Head Tremor Isolation)
 ### Added
 - **`EyeNoseGazeTracker` Dedicated Gaze Engine (`@cc68/vision`)**:

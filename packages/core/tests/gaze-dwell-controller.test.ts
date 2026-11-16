@@ -6,21 +6,21 @@ describe('GazeDwellController', () => {
 
   beforeEach(() => {
     controller = new GazeDwellController({
-      stareDurationMs: 2000, // 2.0 seconds
+      stareDurationMs: 1000, // 1.0 second
       stareRadiusPixels: 60,
       minTargetDistancePixels: 40,
     });
   });
 
-  it('does NOT move cursor if user stares for less than 2 seconds', () => {
+  it('does NOT move cursor if user stares for less than 1 second', () => {
     // 1. Initial cursor at (500, 500)
     controller.setCursorPosition(new Vector2(500, 500));
 
     // 2. User looks at a new position (800, 300) (distance ~360px)
     const newTarget = new Vector2(800, 300);
 
-    // Stare for 0ms, 500ms, 1000ms, 1500ms, 1900ms (< 2000ms)
-    const timestamps = [1000, 1500, 2000, 2500, 2900];
+    // Stare for 0ms, 250ms, 500ms, 750ms, 900ms (< 1000ms)
+    const timestamps = [1000, 1250, 1500, 1750, 1900];
 
     for (const t of timestamps) {
       const res = controller.update(newTarget, t);
@@ -32,7 +32,7 @@ describe('GazeDwellController', () => {
     }
   });
 
-  it('moves cursor when user continuously stares at a position for 2 full seconds', () => {
+  it('moves cursor when user continuously stares at a position for 1 full second', () => {
     controller.setCursorPosition(new Vector2(200, 200));
 
     const target = new Vector2(700, 600);
@@ -40,15 +40,15 @@ describe('GazeDwellController', () => {
     // Start staring at t = 1000ms
     controller.update(target, 1000);
 
-    // At t = 2000ms (1.0s elapsed): cursor still at (200, 200)
-    const midRes = controller.update(target, 2000);
+    // At t = 1500ms (0.5s elapsed): cursor still at (200, 200)
+    const midRes = controller.update(target, 1500);
     expect(midRes.hasMoved).toBe(false);
     expect(midRes.cursorPosition.x).toBe(200);
     expect(midRes.cursorPosition.y).toBe(200);
     expect(midRes.dwellProgress).toBeCloseTo(0.5, 1);
 
-    // At t = 3000ms (2.0s elapsed): 2-SECOND STARE REACHED!
-    const triggerRes = controller.update(target, 3000);
+    // At t = 2000ms (1.0s elapsed): 1-SECOND STARE REACHED!
+    const triggerRes = controller.update(target, 2000);
     expect(triggerRes.hasMoved).toBe(true);
     expect(triggerRes.dwellProgress).toBe(1.0);
     // Cursor has moved to the stared position!
@@ -56,22 +56,22 @@ describe('GazeDwellController', () => {
     expect(triggerRes.cursorPosition.y).toBeCloseTo(600, 0);
   });
 
-  it('resets timer and does not move if user glances away before 2 seconds', () => {
+  it('resets timer and does not move if user glances away before 1 second', () => {
     controller.setCursorPosition(new Vector2(100, 100));
 
-    // Stare at Target 1 for 1.2 seconds (t = 1000 to 2200)
+    // Stare at Target 1 for 0.6 seconds (t = 1000 to 1600)
     controller.update(new Vector2(600, 200), 1000);
-    controller.update(new Vector2(600, 200), 2200);
+    controller.update(new Vector2(600, 200), 1600);
 
-    // Then look at Target 2 (far away: 200, 800) at t = 2300
-    const glanceRes = controller.update(new Vector2(200, 800), 2300);
+    // Then look at Target 2 (far away: 200, 800) at t = 1700
+    const glanceRes = controller.update(new Vector2(200, 800), 1700);
     expect(glanceRes.hasMoved).toBe(false);
     expect(glanceRes.cursorPosition.x).toBe(100);
     expect(glanceRes.cursorPosition.y).toBe(100);
     expect(glanceRes.dwellProgress).toBe(0);
 
-    // Check again at t = 3300 (only 1.0s on Target 2): still hasn't moved
-    const stillWaiting = controller.update(new Vector2(200, 800), 3300);
+    // Check again at t = 2200 (only 0.5s on Target 2): still hasn't moved
+    const stillWaiting = controller.update(new Vector2(200, 800), 2200);
     expect(stillWaiting.hasMoved).toBe(false);
     expect(stillWaiting.cursorPosition.x).toBe(100);
   });

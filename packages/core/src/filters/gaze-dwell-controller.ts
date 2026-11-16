@@ -3,7 +3,7 @@ import { Vector2 } from '../math/vector2';
 export interface GazeDwellConfig {
   /**
    * Required continuous stare duration in milliseconds before moving the cursor.
-   * Default: 2000 ms (2.0 seconds as specified by user).
+   * Default: 1000 ms (1.0 second as specified by user).
    */
   stareDurationMs: number;
 
@@ -23,7 +23,7 @@ export interface GazeDwellConfig {
 }
 
 export const DEFAULT_GAZE_DWELL_CONFIG: GazeDwellConfig = {
-  stareDurationMs: 2000,
+  stareDurationMs: 1000,
   stareRadiusPixels: 70,
   minTargetDistancePixels: 40,
 };
@@ -31,7 +31,7 @@ export const DEFAULT_GAZE_DWELL_CONFIG: GazeDwellConfig = {
 export interface GazeDwellResult {
   /**
    * Current cursor position on screen.
-   * DOES NOT MOVE until user has continuously stared at a new position for 2 seconds.
+   * DOES NOT MOVE until user has continuously stared at a new position for 1 second.
    */
   cursorPosition: Vector2;
 
@@ -41,7 +41,7 @@ export interface GazeDwellResult {
   candidateTarget: Vector2;
 
   /**
-   * Stare progress from 0.0 (0s) to 1.0 (2.0s).
+   * Stare progress from 0.0 (0s) to 1.0 (1.0s).
    */
   dwellProgress: number;
 
@@ -51,7 +51,7 @@ export interface GazeDwellResult {
   elapsedMs: number;
 
   /**
-   * True on the exact frame the 2-second stare completes and the cursor moves.
+   * True on the exact frame the 1-second stare completes and the cursor moves.
    */
   hasMoved: boolean;
 
@@ -62,13 +62,13 @@ export interface GazeDwellResult {
 }
 
 /**
- * GazeDwellController: 2-Second Stare Dwell Cursor Movement Engine.
+ * GazeDwellController: 1-Second Stare Dwell Cursor Movement Engine.
  *
  * Rule:
  * 1. The cursor stays completely still and DOES NOT MOVE while the user looks or glances around.
- * 2. When the user looks at a specific position on the screen and stares at it for 2 full seconds (2000ms),
+ * 2. When the user looks at a specific position on the screen and stares at it for 1 full second (1000ms),
  *    the cursor moves to that exact position.
- * 3. If gaze wanders before 2 seconds are reached, progress resets and the cursor never moves.
+ * 3. If gaze wanders before 1 second is reached, progress resets and the cursor never moves.
  */
 export class GazeDwellController {
   private config: GazeDwellConfig;
@@ -153,9 +153,9 @@ export class GazeDwellController {
       const elapsed = timestampMs - this.dwellStartTimeMs;
       const progress = Math.min(1.0, elapsed / this.config.stareDurationMs);
 
-      // Check if 2 seconds (stareDurationMs) have elapsed!
+      // Check if 1 second (stareDurationMs) has elapsed!
       if (elapsed >= this.config.stareDurationMs) {
-        // 2 SECONDS REACHED: MOVE THE CURSOR NOW!
+        // 1 SECOND REACHED: MOVE THE CURSOR NOW!
         this.currentCursorPos = new Vector2(this.candidateTarget.x, this.candidateTarget.y);
         this.dwellStartTimeMs = null; // Reset for next target
 
