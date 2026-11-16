@@ -24,16 +24,17 @@ Operating as an unobtrusive **Windows System Tray background application (`EyeHa
 
 ```text
 cc68/
-├── main.py                    # Unified application orchestrating all 5 components
+├── main.py                    # Unified application orchestrating all 6 components
 ├── run.bat                    # 1-Click Windows batch launcher
 ├── EyeHand.exe                # Windows System Tray Executable
 ├── eyehand/                   # Clean, Modular Python Architecture
-│   ├── __init__.py            # Package entry point exporting all 5 components
+│   ├── __init__.py            # Package entry point exporting all components
 │   ├── tracker.py             # Component 1: Vision Tracker (Irises + Nose anchor, head pose eliminated)
 │   ├── calibration.py         # Component 2: 5-Point Calibration & 100% Screen Reach Matrix
 │   ├── filters.py             # Component 3: One Euro Filter & 1.0s Stare Dwell Controller
 │   ├── overlay.py             # Component 4: Transparent Click-Through Figma Cursor Overlay
-│   └── mouse.py               # Component 5: Physical OS Mouse Driver & Blink Click
+│   ├── mouse.py               # Component 5: Physical OS Mouse Driver & Blink Click
+│   └── panel.py               # Component 6: Interactive Registration & Test Panel
 ├── scripts/
 │   └── Launcher.cs            # Native C# System Tray launcher
 ├── packages/

@@ -7,6 +7,7 @@ from .calibration import GazeCalibrator
 from .filters import OneEuroFilter, GazeDwellController
 from .overlay import FigmaCursorOverlay
 from .mouse import MouseController
+from .panel import RegistrationTestPanel
 
 __all__ = [
     "EyeTracker",
@@ -16,5 +17,6 @@ __all__ = [
     "GazeDwellController",
     "FigmaCursorOverlay",
     "MouseController",
+    "RegistrationTestPanel",
 ]
 

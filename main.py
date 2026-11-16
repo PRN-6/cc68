@@ -17,6 +17,7 @@ from eyehand import (
     GazeDwellController,
     FigmaCursorOverlay,
     MouseController,
+    RegistrationTestPanel,
 )
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -59,29 +60,36 @@ def main():
         print("[ERROR] Could not open webcam. Make sure no other app is using your camera.")
         return
 
-    # 3. Calibration System
-    print("[3/4] Initializing Screen Calibrator...")
+    # 3. Calibration System & Interactive Registration / Test Panel
+    print("[3/4] Initializing Registration & Test Panel...")
     calibrator = GazeCalibrator(CALIB_FILE, SCREEN_W, SCREEN_H)
-    if not calibrator.is_calibrated:
-        print("\n--> Starting fast 5-point calibration (Center, 4 Corners)...")
-        calibrator.calibrate_interactive(cap, tracker)
-
-    # 4. Desktop Figma Cursor Overlay & Mouse Driver
-    print("[4/4] Starting Transparent Windows Figma Cursor Overlay...")
-    overlay = FigmaCursorOverlay(size=90)
-    mouse = MouseController(click_cooldown_s=0.75)
+    panel = RegistrationTestPanel(SCREEN_W, SCREEN_H, calibrator)
 
     filter_x = OneEuroFilter(min_cutoff=0.8, beta=0.03)
     filter_y = OneEuroFilter(min_cutoff=0.8, beta=0.03)
     dwell_ctrl = GazeDwellController(stare_duration_s=1.0, stare_radius_px=115, screen_w=SCREEN_W, screen_h=SCREEN_H)
 
-    dwell_mode = True  # Default: 1.0-Second Stare Dwell Lock (user stared at position for 1s before cursor moves)
+    # Launch Interactive Test & Registration Panel first
+    print("\n--> Opening Full-Screen Registration & Test Panel...")
+    action = panel.run(cap, tracker, filter_x, filter_y, dwell_ctrl)
+    if action != "desktop":
+        print("\nEyeHand closed from Test Panel.")
+        cap.release()
+        cv2.destroyAllWindows()
+        return
+
+    # 4. Desktop Figma Cursor Overlay & Physical Mouse Driver
+    print("\n[4/4] Starting Transparent Windows Figma Cursor Overlay...")
+    overlay = FigmaCursorOverlay(size=90)
+    mouse = MouseController(click_cooldown_s=0.75)
+
+    dwell_mode = True  # Default: 1.0-Second Stare Dwell Lock
     sync_os_mouse = True
 
     print("\n" + "=" * 65)
-    print("  EyeHand is Live and Tracking!")
+    print("  EyeHand is Live and Controlling Windows Desktop!")
     print("  -------------------------------------------------------------")
-    print("  [C]     - Re-run 5-Point Calibration")
+    print("  [T/C]   - Open Interactive Registration & Test Panel")
     print("  [D]     - Toggle Mode: Live Follow <-> 1.0s Stare Dwell")
     print("  [M]     - Toggle Physical OS Mouse Sync")
     print("  [Space] - Auto-Center neutral resting gaze")
@@ -163,12 +171,12 @@ def main():
             elif key == ord('m') or key == ord('M'):
                 sync_os_mouse = not sync_os_mouse
                 print(f"[MOUSE SYNC] Physical OS mouse sync is now {'ON' if sync_os_mouse else 'OFF'}")
-            elif key == ord('c') or key == ord('C'):
-                print("\n[CALIBRATION] Starting 5-point calibration...")
-                calibrator.calibrate_interactive(cap, tracker)
-                filter_x.reset()
-                filter_y.reset()
-                dwell_ctrl.reset()
+            elif key == ord('t') or key == ord('T') or key == ord('c') or key == ord('C'):
+                cv2.destroyWindow("EyeHand Camera Feed")
+                action = panel.run(cap, tracker, filter_x, filter_y, dwell_ctrl)
+                if action != "desktop":
+                    break
+                cv2.namedWindow("EyeHand Camera Feed", cv2.WINDOW_AUTOSIZE)
             elif key == 32:  # Spacebar
                 tracker.recenter_anchor()
                 filter_x.reset()
