@@ -33,7 +33,8 @@ EAR_BLINK_THRESHOLD = 0.18
 
 @dataclass
 class EyeFeatures:
-    raw_vector: np.ndarray       # [eye_x, eye_y, nose_x, nose_y]
+    gaze_point: np.ndarray       # [gaze_x, gaze_y] clean 2D normalized gaze point
+    raw_vector: np.ndarray       # [gaze_x, gaze_y]
     left_iris: tuple             # (x, y) in camera pixel coords
     right_iris: tuple            # (x, y) in camera pixel coords
     nose_tip: tuple              # (x, y) in camera pixel coords
@@ -144,11 +145,14 @@ class EyeTracker:
         r_ear = abs(r_top.y - r_bottom.y) / r_w
         is_blinking = ((l_ear + r_ear) * 0.5) < EAR_BLINK_THRESHOLD
 
-        # Feature vector [eye_x, eye_y, nose_dx, nose_dy]
-        raw_vector = np.array([eye_x, eye_y, filtered_nose_dx, filtered_nose_dy], dtype=np.float32)
+        # 2D Gaze Displacement Vector [gaze_x, gaze_y]
+        gaze_x = float(eye_x + filtered_nose_dx * 0.35)
+        gaze_y = float(eye_y + filtered_nose_dy * 0.35)
+        gaze_point = np.array([gaze_x, gaze_y], dtype=np.float32)
 
         return EyeFeatures(
-            raw_vector=raw_vector,
+            gaze_point=gaze_point,
+            raw_vector=gaze_point,
             left_iris=(int(l_iris.x * w), int(l_iris.y * h)),
             right_iris=(int(r_iris.x * w), int(r_iris.y * h)),
             nose_tip=(int(nose.x * w), int(nose.y * h)),

@@ -1,8 +1,7 @@
 """
 Component 6: Interactive Registration & Test Panel
-Provides a full-screen interactive onboarding, registration, and testing environment:
-1. Precision Gaze Registration: Guides the user through target locations, analyzes iris & nose data,
-   and computes the Least-Squares affine mapping matrix.
+1. Precision Gaze Registration: Guides the user through 5 screen positions, gathers 2D iris & gaze vectors,
+   and computes the optimal 2D Affine mapping matrix.
 2. Interactive Test Sandbox: Allows the user to look around 9 target zones on screen, test their
    1.0-second stare dwell lock, view live accuracy & matching error, and verify 100% full-screen reach
    before launching into native Windows Desktop control.
@@ -48,8 +47,8 @@ class RegistrationTestPanel:
         Phase 1: Precision Gaze Registration & Data Matching
         Guides user through 5 screen positions, gathers iris samples, and fits the affine matrix.
         """
-        margin_x = int(self.screen_w * 0.10)
-        margin_y = int(self.screen_h * 0.10)
+        margin_x = int(self.screen_w * 0.12)
+        margin_y = int(self.screen_h * 0.14)
         cx = self.screen_w // 2
         cy = self.screen_h // 2
 
@@ -63,7 +62,7 @@ class RegistrationTestPanel:
 
         recorded_features = []
         recorded_targets = []
-        point_duration = 1.4  # seconds of fixation per point
+        point_duration = 1.3  # seconds of fixation per point
 
         for step_idx, (label, tx, ty) in enumerate(targets):
             target_samples = []
@@ -81,10 +80,10 @@ class RegistrationTestPanel:
                 canvas = np.zeros((self.screen_h, self.screen_w, 3), dtype=np.uint8)
                 canvas[:] = (20, 15, 10)  # Slate dark background
 
-                # Ignore initial 0.35s saccade settling
                 elapsed = time.time() - dwell_start
-                if elapsed > 0.35 and feat is not None:
-                    target_samples.append(feat.raw_vector)
+                # Ignore initial 0.30s saccade settling
+                if elapsed > 0.30 and feat is not None:
+                    target_samples.append(feat.gaze_point)
 
                 progress = min(1.0, elapsed / point_duration)
 
@@ -107,8 +106,8 @@ class RegistrationTestPanel:
                     cv2.ellipse(canvas, (tx, ty), (36, 36), 0, -90, -90 + sweep_angle, (11, 158, 245), 4, cv2.LINE_AA)
 
                 # Crosshair
-                cv2.line(canvas, (tx - 18, ty), (tx + 18, ty), (255, 255, 255), 1, cv2.LINE_AA)
-                cv2.line(canvas, (tx, ty - 18), (tx, ty + 18), (255, 255, 255), 1, cv2.LINE_AA)
+                cv2.line(canvas, (tx - 20, ty), (tx + 20, ty), (255, 255, 255), 1, cv2.LINE_AA)
+                cv2.line(canvas, (tx, ty - 20), (tx, ty + 20), (255, 255, 255), 1, cv2.LINE_AA)
                 cv2.circle(canvas, (tx, ty), 8, (129, 185, 16), -1)
                 cv2.circle(canvas, (tx, ty), 3, (255, 255, 255), -1)
 
@@ -129,25 +128,18 @@ class RegistrationTestPanel:
                 recorded_targets.append([tx, ty])
 
         # Analyze data and compute matching affine transformation matrix
-        if len(recorded_features) >= 4:
+        if len(recorded_features) >= 3:
             # Splash: Analyzing data
             splash = np.zeros((self.screen_h, self.screen_w, 3), dtype=np.uint8)
             splash[:] = (20, 15, 10)
             cv2.putText(splash, "ANALYZING DATA & MATCHING GAZE MODEL...", (cx - 320, cy - 20),
                         cv2.FONT_HERSHEY_SIMPLEX, 1.0, (11, 158, 245), 2, cv2.LINE_AA)
-            cv2.putText(splash, "Fitting Least-Squares Screen Projection Matrix", (cx - 260, cy + 25),
+            cv2.putText(splash, "Fitting 2D Affine Screen Projection Matrix", (cx - 260, cy + 25),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.65, (180, 180, 180), 1, cv2.LINE_AA)
             cv2.imshow(self.win_name, splash)
             cv2.waitKey(500)
 
-            X = np.array(recorded_features)
-            X_bias = np.hstack([X, np.ones((len(X), 1))])
-            Y = np.array(recorded_targets)
-
-            self.calibrator.affine_M, _, _, _ = np.linalg.lstsq(X_bias, Y, rcond=None)
-            self.calibrator.is_calibrated = True
-            self.calibrator.save()
-            return True
+            return self.calibrator.fit(recorded_features, recorded_targets)
 
         return False
 
@@ -163,14 +155,14 @@ class RegistrationTestPanel:
 
         # 9 interactive test target cards across the display
         test_targets = [
-            {"id": "TOP-LEFT",      "x": margin_x,               "y": margin_y,               "matched": False, "err": 0},
-            {"id": "TOP-CENTER",    "x": cx,                     "y": margin_y,               "matched": False, "err": 0},
-            {"id": "TOP-RIGHT",     "x": self.screen_w - margin_x, "y": margin_y,             "matched": False, "err": 0},
-            {"id": "MID-LEFT",      "x": margin_x,               "y": cy,                     "matched": False, "err": 0},
-            {"id": "SCREEN CENTER", "x": cx,                     "y": cy,                     "matched": False, "err": 0},
-            {"id": "MID-RIGHT",     "x": self.screen_w - margin_x, "y": cy,                   "matched": False, "err": 0},
-            {"id": "BOTTOM-LEFT",   "x": margin_x,               "y": self.screen_h - margin_y, "matched": False, "err": 0},
-            {"id": "BOTTOM-CENTER", "x": cx,                     "y": self.screen_h - margin_y, "matched": False, "err": 0},
+            {"id": "TOP-LEFT",      "x": margin_x,                 "y": margin_y,                 "matched": False, "err": 0},
+            {"id": "TOP-CENTER",    "x": cx,                       "y": margin_y,                 "matched": False, "err": 0},
+            {"id": "TOP-RIGHT",     "x": self.screen_w - margin_x, "y": margin_y,                 "matched": False, "err": 0},
+            {"id": "MID-LEFT",      "x": margin_x,                 "y": cy,                       "matched": False, "err": 0},
+            {"id": "SCREEN CENTER", "x": cx,                       "y": cy,                       "matched": False, "err": 0},
+            {"id": "MID-RIGHT",     "x": self.screen_w - margin_x, "y": cy,                       "matched": False, "err": 0},
+            {"id": "BOTTOM-LEFT",   "x": margin_x,                 "y": self.screen_h - margin_y, "matched": False, "err": 0},
+            {"id": "BOTTOM-CENTER", "x": cx,                       "y": self.screen_h - margin_y, "matched": False, "err": 0},
             {"id": "BOTTOM-RIGHT",  "x": self.screen_w - margin_x, "y": self.screen_h - margin_y, "matched": False, "err": 0},
         ]
 
@@ -178,6 +170,8 @@ class RegistrationTestPanel:
         dwell_ctrl.reset((cx, cy))
         filter_x.reset()
         filter_y.reset()
+
+        smooth_px, smooth_py = cx, cy
 
         while cap.isOpened():
             ok, frame = cap.read()
@@ -197,8 +191,8 @@ class RegistrationTestPanel:
             has_moved = False
 
             if feat is not None:
-                # 1. Transform raw eye vector to screen coordinates
-                raw_px, raw_py = self.calibrator.predict(feat.raw_vector)
+                # 1. Transform raw 2D eye gaze to screen coordinates
+                raw_px, raw_py = self.calibrator.predict(feat.gaze_point)
 
                 # 2. Filter jitter with One Euro Filter
                 smooth_px = filter_x.filter(raw_px, now)
@@ -211,41 +205,49 @@ class RegistrationTestPanel:
                 else:
                     active_x, active_y = int(smooth_px), int(smooth_py)
                     dwell_prog = 0.0
+            else:
+                active_x, active_y = dwell_ctrl.current_cursor
 
-            # Header HUD
+            # 1. Header HUD
             mode_text = "1.0s STARE DWELL LOCK" if dwell_mode else "LIVE SMOOTH FOLLOW"
             matched_count = sum(1 for t in test_targets if t["matched"])
             self._draw_hud(
                 canvas,
                 title="EYEHAND TEST & VERIFICATION PANEL",
-                subtitle=f"Mode: {mode_text} [Press D to switch] | Targets Matched: {matched_count} / {len(test_targets)}"
+                subtitle=f"Mode: {mode_text} [Press D to switch] | Targets Matched: {matched_count} / {len(test_targets)} | Gaze: ({int(smooth_px)}, {int(smooth_py)})"
             )
 
-            # Mini camera PIP in top-right
+            # 2. Mini camera PIP in top-right
             self._draw_camera_pip(canvas, frame, feat)
 
-            # Draw 9 interactive test target cards
+            # 3. Draw 9 interactive test target cards
             for tgt in test_targets:
                 tx, ty = tgt["x"], tgt["y"]
-                dist = math.hypot(active_x - tx, active_y - ty)
-                is_hovered = dist < 90
+                # Distance to user's active gaze focus
+                gaze_dist = math.hypot(smooth_px - tx, smooth_py - ty)
+                cursor_dist = math.hypot(active_x - tx, active_y - ty)
+                is_hovered = gaze_dist < 100 or cursor_dist < 80
 
                 # Check if user dwelled on or reached this target
                 if is_hovered:
                     if dwell_mode and (has_moved or dwell_prog > 0.85):
                         tgt["matched"] = True
-                        tgt["err"] = int(dist)
-                    elif not dwell_mode and dist < 70:
+                        tgt["err"] = int(cursor_dist)
+                    elif not dwell_mode and gaze_dist < 75:
                         tgt["matched"] = True
-                        tgt["err"] = int(dist)
+                        tgt["err"] = int(gaze_dist)
 
                 self._draw_target_card(canvas, tgt, is_hovered, dwell_prog if is_hovered else 0.0)
 
-            # Render the Authentic Figma Cursor on the Test Panel
-            self._draw_figma_cursor(canvas, active_x, active_y, dwell_prog)
-
-            # Action bar at bottom
+            # 4. Action bar at bottom (drawn BEFORE cursors so cursors are always on top)
             self._draw_action_bar(canvas)
+
+            # 5. Live Gaze Focus Ring (Subtle glowing cyan reticle showing where eyes are fixating)
+            cv2.circle(canvas, (int(smooth_px), int(smooth_py)), 10, (255, 220, 0), 2, cv2.LINE_AA)
+            cv2.circle(canvas, (int(smooth_px), int(smooth_py)), 2, (255, 255, 255), -1)
+
+            # 6. Render the Authentic Figma Cursor on Top of Everything
+            self._draw_figma_cursor(canvas, active_x, active_y, dwell_prog)
 
             cv2.imshow(self.win_name, canvas)
             key = cv2.waitKey(1) & 0xFF
@@ -261,7 +263,6 @@ class RegistrationTestPanel:
                 # Re-run registration
                 ok = self._run_registration(cap, tracker)
                 if ok:
-                    # Reset target match states
                     for t in test_targets:
                         t["matched"] = False
                         t["err"] = 0
@@ -274,11 +275,9 @@ class RegistrationTestPanel:
         return "exit"
 
     def _draw_hud(self, canvas, title: str, subtitle: str):
-        # Top banner background
         cv2.rectangle(canvas, (0, 0), (self.screen_w, 95), (28, 22, 16), -1)
         cv2.line(canvas, (0, 95), (self.screen_w, 95), (55, 45, 35), 1, cv2.LINE_AA)
 
-        # Title and subtitle
         cv2.putText(canvas, title, (40, 42),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.90, (255, 255, 255), 2, cv2.LINE_AA)
         cv2.putText(canvas, subtitle, (40, 72),
@@ -289,16 +288,13 @@ class RegistrationTestPanel:
         pip_x = self.screen_w - pip_w - 30
         pip_y = 15
 
-        # Resize camera frame
         pip_img = cv2.resize(frame, (pip_w, pip_h))
         canvas[pip_y:pip_y + pip_h, pip_x:pip_x + pip_w] = pip_img
 
-        # Status border
         has_face = feat is not None
         border_col = (129, 185, 16) if has_face else (0, 0, 220)
         cv2.rectangle(canvas, (pip_x, pip_y), (pip_x + pip_w, pip_y + pip_h), border_col, 2)
 
-        # Draw irises and nose inside PIP
         if has_face:
             cam_h, cam_w = frame.shape[:2]
             scale_x = pip_w / cam_w
@@ -368,8 +364,8 @@ class RegistrationTestPanel:
                 cv2.rectangle(canvas, (x1 + 10, y2 - 10), (x1 + 10 + bar_w, y2 - 6), (11, 158, 245), -1)
 
     def _draw_figma_cursor(self, canvas, x: int, y: int, dwell_prog: float):
-        x = int(np.clip(x, 20, self.screen_w - 60))
-        y = int(np.clip(y, 20, self.screen_h - 60))
+        x = int(np.clip(x, 10, self.screen_w - 60))
+        y = int(np.clip(y, 10, self.screen_h - 60))
 
         fill_col = (255, 89, 162)  # Figma Purple (#A259FF in BGR)
 

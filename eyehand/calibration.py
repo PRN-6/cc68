@@ -1,7 +1,7 @@
 """
 Component 2: Screen Calibration System
-Runs an interactive 5-point calibration (Center, Top-Left, Top-Right, Bottom-Right, Bottom-Left).
-Fits an Affine / Homography Least-Squares mapping matrix so gaze lands with pinpoint accuracy.
+Fits a robust 2D Affine Transformation Matrix: [gaze_x, gaze_y] -> [screen_x, screen_y]
+Uses cv2.estimateAffine2D with Ridge Regression fallback so mapping is guaranteed stable and never singular.
 """
 
 import os
@@ -22,10 +22,15 @@ class GazeCalibrator:
         if os.path.exists(self.calib_file):
             try:
                 data = np.load(self.calib_file, allow_pickle=True).item()
-                self.affine_M = data.get("affine_M")
-                self.is_calibrated = self.affine_M is not None
-                if self.is_calibrated:
-                    print(f"Loaded calibration from {self.calib_file}")
+                M = data.get("affine_M")
+                if M is not None and isinstance(M, np.ndarray):
+                    # Validate matrix dimensions and magnitude to prevent corrupted matrices
+                    if M.shape == (2, 3) and np.max(np.abs(M)) < 50000:
+                        self.affine_M = M
+                        self.is_calibrated = True
+                        print(f"Loaded valid calibration from {self.calib_file}")
+                        return
+                self.is_calibrated = False
             except Exception:
                 self.is_calibrated = False
 
@@ -35,113 +40,57 @@ class GazeCalibrator:
             np.save(self.calib_file, data)
             print(f"Calibration saved to {self.calib_file}")
 
-    def calibrate_interactive(self, cap, tracker):
+    def fit(self, recorded_features, recorded_targets) -> bool:
         """
-        Runs a 5-second fullscreen interactive calibration.
+        Fits a 2D affine transformation matrix: src [gaze_x, gaze_y] -> dst [screen_x, screen_y]
         """
-        win_name = "EyeHand Calibration - Look at each glowing dot"
-        cv2.namedWindow(win_name, cv2.WINDOW_NORMAL)
-        cv2.setWindowProperty(win_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+        if len(recorded_features) < 3:
+            return False
 
-        margin_x = int(self.screen_w * 0.08)
-        margin_y = int(self.screen_h * 0.08)
-        cx = self.screen_w // 2
-        cy = self.screen_h // 2
+        src = np.array(recorded_features, dtype=np.float32)
+        dst = np.array(recorded_targets, dtype=np.float32)
 
-        targets = [
-            ("LOOK AT SCREEN CENTER", cx, cy),
-            ("LOOK AT TOP-LEFT", margin_x, margin_y),
-            ("LOOK AT TOP-RIGHT", self.screen_w - margin_x, margin_y),
-            ("LOOK AT BOTTOM-RIGHT", self.screen_w - margin_x, self.screen_h - margin_y),
-            ("LOOK AT BOTTOM-LEFT", margin_x, self.screen_h - margin_y),
-        ]
+        # 1. Estimate Affine 2D with OpenCV
+        M, inliers = cv2.estimateAffine2D(src, dst)
 
-        recorded_features = []
-        recorded_targets = []
+        # 2. Fallback to Ridge Regression if estimateAffine2D had high error
+        if M is None or np.max(np.abs(M)) > 30000:
+            X = np.hstack([src, np.ones((len(src), 1))])
+            ridge = 0.05 * np.eye(3)
+            ridge[2, 2] = 0.0  # Don't regularize bias offset
+            M_t = np.linalg.inv(X.T @ X + ridge) @ X.T @ dst
+            M = M_t.T
 
-        start_time = time.time()
-
-        for label, tx, ty in targets:
-            target_samples = []
-            dwell_start = time.time()
-            point_duration = 1.3  # seconds per target
-
-            while time.time() - dwell_start < point_duration:
-                ok, frame = cap.read()
-                if not ok:
-                    continue
-
-                frame = cv2.flip(frame, 1)
-                rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                feat = tracker.process_frame(rgb_frame)
-                if feat is not None:
-                    # Ignore first 0.35s to allow eyes to settle
-                    if (time.time() - dwell_start) > 0.35:
-                        target_samples.append(feat.raw_vector)
-
-                # Render calibration backdrop
-                canvas = np.zeros((self.screen_h, self.screen_w, 3), dtype=np.uint8)
-                elapsed = time.time() - dwell_start
-                progress = min(1.0, elapsed / point_duration)
-
-                # Glowing target with animated shrinking countdown circle
-                outer_r = int(38 - progress * 18)
-                cv2.circle(canvas, (tx, ty), outer_r, (0, 200, 255), 3, cv2.LINE_AA)
-                cv2.circle(canvas, (tx, ty), 10, (0, 255, 120), -1)
-                cv2.circle(canvas, (tx, ty), 3, (255, 255, 255), -1)
-
-                cv2.putText(canvas, label, (self.screen_w // 2 - 200, 100),
-                            cv2.FONT_HERSHEY_SIMPLEX, 1.1, (255, 255, 255), 2, cv2.LINE_AA)
-                cv2.putText(canvas, f"Progress: {int(progress * 100)}% (ESC to skip)",
-                            (self.screen_w // 2 - 140, 145), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (180, 180, 180), 1, cv2.LINE_AA)
-
-                cv2.imshow(win_name, canvas)
-                key = cv2.waitKey(1) & 0xFF
-                if key == 27:
-                    cv2.destroyWindow(win_name)
-                    return False
-
-            if len(target_samples) > 0:
-                mean_feat = np.mean(target_samples, axis=0)
-                recorded_features.append(mean_feat)
-                recorded_targets.append([tx, ty])
-
-        cv2.destroyWindow(win_name)
-
-        if len(recorded_features) >= 4:
-            X = np.array(recorded_features)
-            X_bias = np.hstack([X, np.ones((len(X), 1))])
-            Y = np.array(recorded_targets)
-
-            # Least-Squares fit: Affine mapping matrix
-            self.affine_M, _, _, _ = np.linalg.lstsq(X_bias, Y, rcond=None)
+        if M is not None and M.shape == (2, 3):
+            self.affine_M = M
             self.is_calibrated = True
             self.save()
-            print("Interactive 5-point calibration completed successfully!")
+            print("2D Affine Calibration Matrix fitted successfully!")
             return True
 
         return False
 
-    def predict(self, feature_vector):
+    def predict(self, gaze_pt):
         """
-        Transforms raw feature vector [eye_x, eye_y, nose_dx, nose_dy] into (screen_x, screen_y)
-        Applies border reach expansion to guarantee reaching 100% of the display edges.
+        Transforms 2D gaze point [gaze_x, gaze_y] into screen (px, py).
+        Applies border reach expansion gain so the eyes comfortably reach 100% of all borders.
         """
+        gx = float(gaze_pt[0])
+        gy = float(gaze_pt[1])
+
         if self.is_calibrated and self.affine_M is not None:
-            feat_bias = np.append(feature_vector, 1.0)
-            target = feat_bias @ self.affine_M
-            raw_px = target[0]
-            raw_py = target[1]
+            # 2x3 Affine Transform: [px, py]^T = M @ [gx, gy, 1]^T
+            vec = np.array([gx, gy, 1.0], dtype=np.float32)
+            target = self.affine_M @ vec
+            raw_px, raw_py = float(target[0]), float(target[1])
         else:
-            # Baseline compensation when uncalibrated:
-            eye_x, eye_y, nose_dx, nose_dy = feature_vector
-            # Eye movement dominates, nose is minor anchor, compensating for top webcam downward tilt (-0.16)
-            norm_x = 0.5 + (eye_x * 4.2 + nose_dx * 1.2) * 0.5 * 1.85
-            norm_y = 0.5 + ((eye_y - 0.16) * 4.6 + nose_dy * 1.2) * 0.5 * 1.85
+            # Reliable uncalibrated fallback
+            norm_x = 0.5 + gx * 2.8
+            norm_y = 0.5 + (gy - 0.14) * 3.2
             raw_px = norm_x * self.screen_w
             raw_py = norm_y * self.screen_h
 
-        # Screen border reach gain: expands natural eye range so user comfortably reaches all 4 borders & corners
+        # Screen border reach expansion gain
         cx = self.screen_w / 2.0
         cy = self.screen_h / 2.0
         gain_x = 1.25
@@ -149,6 +98,6 @@ class GazeCalibrator:
         px = cx + (raw_px - cx) * gain_x
         py = cy + (raw_py - cy) * gain_y
 
-        px = np.clip(px, 0, self.screen_w)
-        py = np.clip(py, 0, self.screen_h)
-        return px, py
+        px = np.clip(px, 10, self.screen_w - 10)
+        py = np.clip(py, 10, self.screen_h - 10)
+        return float(px), float(py)

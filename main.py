@@ -114,7 +114,7 @@ def main():
 
             if features is not None:
                 # 1. Transform raw eye features to screen coordinates
-                raw_px, raw_py = calibrator.predict(features.raw_vector)
+                raw_px, raw_py = calibrator.predict(features.gaze_point)
 
                 # 2. Filter jitter with One Euro Filter
                 smooth_px = filter_x.filter(raw_px, now)
