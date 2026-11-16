@@ -83,7 +83,7 @@ def main():
     overlay = FigmaCursorOverlay(size=90)
     mouse = MouseController(click_cooldown_s=0.75)
 
-    dwell_mode = True  # Default: 1.0-Second Stare Dwell Lock
+    dwell_mode = False  # Default: Live Smooth Follow (cursor immediately follows eye gaze; press D for 1.0s Stare Dwell)
     sync_os_mouse = True
 
     print("\n" + "=" * 65)

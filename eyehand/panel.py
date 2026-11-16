@@ -1,9 +1,9 @@
 """
 Component 6: Interactive Registration & Test Panel
 1. Precision Gaze Registration: Guides the user through 5 screen positions, gathers 2D iris & gaze vectors,
-   and computes the optimal 2D Affine mapping matrix.
-2. Interactive Test Sandbox: Allows the user to look around 9 target zones on screen, test their
-   1.0-second stare dwell lock, view live accuracy & matching error, and verify 100% full-screen reach
+   and learns the personal eye range and Affine projection matrix.
+2. Interactive Test Sandbox: Allows the user to look around 9 target zones on screen, test live gaze tracking
+   and 1.0-second stare dwell lock, view live accuracy & matching error, and verify 100% full-screen reach
    before launching into native Windows Desktop control.
 """
 
@@ -44,8 +44,8 @@ class RegistrationTestPanel:
 
     def _run_registration(self, cap, tracker) -> bool:
         """
-        Phase 1: Precision Gaze Registration & Data Matching
-        Guides user through 5 screen positions, gathers iris samples, and fits the affine matrix.
+        Phase 1: Precision Gaze Registration & Machine Learning
+        Guides user through 5 screen positions, gathers iris samples, and fits the personal projection model.
         """
         margin_x = int(self.screen_w * 0.12)
         margin_y = int(self.screen_h * 0.14)
@@ -62,13 +62,13 @@ class RegistrationTestPanel:
 
         recorded_features = []
         recorded_targets = []
-        point_duration = 1.3  # seconds of fixation per point
+        point_duration = 1.6  # seconds of fixation per point
 
         for step_idx, (label, tx, ty) in enumerate(targets):
             target_samples = []
             dwell_start = time.time()
 
-            while time.time() - dwell_start < point_duration:
+            while True:
                 ok, frame = cap.read()
                 if not ok:
                     continue
@@ -81,8 +81,8 @@ class RegistrationTestPanel:
                 canvas[:] = (20, 15, 10)  # Slate dark background
 
                 elapsed = time.time() - dwell_start
-                # Ignore initial 0.30s saccade settling
-                if elapsed > 0.30 and feat is not None:
+                # Ignore initial 0.25s saccade settling
+                if elapsed > 0.25 and feat is not None:
                     target_samples.append(feat.gaze_point)
 
                 progress = min(1.0, elapsed / point_duration)
@@ -90,7 +90,7 @@ class RegistrationTestPanel:
                 # Header HUD
                 self._draw_hud(canvas,
                     title=f"GAZE REGISTRATION - STEP {step_idx + 1} OF {len(targets)}",
-                    subtitle="Keep your head steady. Look directly at the glowing center dot to register."
+                    subtitle="Look directly at the glowing center dot to register. Press [SPACE] when ready or hold gaze."
                 )
 
                 # Mini camera PIP in top-right
@@ -106,21 +106,27 @@ class RegistrationTestPanel:
                     cv2.ellipse(canvas, (tx, ty), (36, 36), 0, -90, -90 + sweep_angle, (11, 158, 245), 4, cv2.LINE_AA)
 
                 # Crosshair
-                cv2.line(canvas, (tx - 20, ty), (tx + 20, ty), (255, 255, 255), 1, cv2.LINE_AA)
-                cv2.line(canvas, (tx, ty - 20), (tx, ty + 20), (255, 255, 255), 1, cv2.LINE_AA)
+                cv2.line(canvas, (tx - 22, ty), (tx + 22, ty), (255, 255, 255), 1, cv2.LINE_AA)
+                cv2.line(canvas, (tx, ty - 22), (tx, ty + 22), (255, 255, 255), 1, cv2.LINE_AA)
                 cv2.circle(canvas, (tx, ty), 8, (129, 185, 16), -1)
                 cv2.circle(canvas, (tx, ty), 3, (255, 255, 255), -1)
 
                 # Label below target
                 cv2.putText(canvas, label, (tx - 110, ty + 55),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 255, 255), 2, cv2.LINE_AA)
-                cv2.putText(canvas, f"Registering: {int(progress * 100)}%", (tx - 70, ty + 80),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.52, (11, 158, 245), 1, cv2.LINE_AA)
+                cv2.putText(canvas, f"Learning: {int(progress * 100)}% (or press SPACE)", (tx - 110, ty + 80),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.50, (11, 158, 245), 1, cv2.LINE_AA)
 
                 cv2.imshow(self.win_name, canvas)
                 key = cv2.waitKey(1) & 0xFF
                 if key == 27 or key == ord('q'):
                     return False
+                elif key == 32:  # Spacebar triggers instant capture
+                    if len(target_samples) > 0:
+                        break
+
+                if elapsed >= point_duration:
+                    break
 
             if len(target_samples) > 0:
                 mean_feat = np.mean(target_samples, axis=0)
@@ -132,12 +138,12 @@ class RegistrationTestPanel:
             # Splash: Analyzing data
             splash = np.zeros((self.screen_h, self.screen_w, 3), dtype=np.uint8)
             splash[:] = (20, 15, 10)
-            cv2.putText(splash, "ANALYZING DATA & MATCHING GAZE MODEL...", (cx - 320, cy - 20),
-                        cv2.FONT_HERSHEY_SIMPLEX, 1.0, (11, 158, 245), 2, cv2.LINE_AA)
-            cv2.putText(splash, "Fitting 2D Affine Screen Projection Matrix", (cx - 260, cy + 25),
+            cv2.putText(splash, "LEARNING GAZE PATTERNS & MATCHING TO SCREEN...", (cx - 380, cy - 20),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.95, (11, 158, 245), 2, cv2.LINE_AA)
+            cv2.putText(splash, "Training 2D Affine Screen Projection Model", (cx - 240, cy + 25),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.65, (180, 180, 180), 1, cv2.LINE_AA)
             cv2.imshow(self.win_name, splash)
-            cv2.waitKey(500)
+            cv2.waitKey(400)
 
             return self.calibrator.fit(recorded_features, recorded_targets)
 
@@ -146,7 +152,8 @@ class RegistrationTestPanel:
     def _run_test_sandbox(self, cap, tracker, filter_x, filter_y, dwell_ctrl) -> str:
         """
         Phase 2: Live Test & Verification Sandbox
-        Displays 9 test target cards. User gazes at them to test 1.0s dwell lock and see matching accuracy.
+        Displays 9 test target cards. The cursor follows eye movements in real time.
+        Fixating on any target charges and matches it.
         """
         margin_x = int(self.screen_w * 0.12)
         margin_y = int(self.screen_h * 0.14)
@@ -155,18 +162,18 @@ class RegistrationTestPanel:
 
         # 9 interactive test target cards across the display
         test_targets = [
-            {"id": "TOP-LEFT",      "x": margin_x,                 "y": margin_y,                 "matched": False, "err": 0},
-            {"id": "TOP-CENTER",    "x": cx,                       "y": margin_y,                 "matched": False, "err": 0},
-            {"id": "TOP-RIGHT",     "x": self.screen_w - margin_x, "y": margin_y,                 "matched": False, "err": 0},
-            {"id": "MID-LEFT",      "x": margin_x,                 "y": cy,                       "matched": False, "err": 0},
-            {"id": "SCREEN CENTER", "x": cx,                       "y": cy,                       "matched": False, "err": 0},
-            {"id": "MID-RIGHT",     "x": self.screen_w - margin_x, "y": cy,                       "matched": False, "err": 0},
-            {"id": "BOTTOM-LEFT",   "x": margin_x,                 "y": self.screen_h - margin_y, "matched": False, "err": 0},
-            {"id": "BOTTOM-CENTER", "x": cx,                       "y": self.screen_h - margin_y, "matched": False, "err": 0},
-            {"id": "BOTTOM-RIGHT",  "x": self.screen_w - margin_x, "y": self.screen_h - margin_y, "matched": False, "err": 0},
+            {"id": "TOP-LEFT",      "x": margin_x,                 "y": margin_y,                 "matched": False, "err": 0, "dwell": 0.0, "dwell_start": None},
+            {"id": "TOP-CENTER",    "x": cx,                       "y": margin_y,                 "matched": False, "err": 0, "dwell": 0.0, "dwell_start": None},
+            {"id": "TOP-RIGHT",     "x": self.screen_w - margin_x, "y": margin_y,                 "matched": False, "err": 0, "dwell": 0.0, "dwell_start": None},
+            {"id": "MID-LEFT",      "x": margin_x,                 "y": cy,                       "matched": False, "err": 0, "dwell": 0.0, "dwell_start": None},
+            {"id": "SCREEN CENTER", "x": cx,                       "y": cy,                       "matched": False, "err": 0, "dwell": 0.0, "dwell_start": None},
+            {"id": "MID-RIGHT",     "x": self.screen_w - margin_x, "y": cy,                       "matched": False, "err": 0, "dwell": 0.0, "dwell_start": None},
+            {"id": "BOTTOM-LEFT",   "x": margin_x,                 "y": self.screen_h - margin_y, "matched": False, "err": 0, "dwell": 0.0, "dwell_start": None},
+            {"id": "BOTTOM-CENTER", "x": cx,                       "y": self.screen_h - margin_y, "matched": False, "err": 0, "dwell": 0.0, "dwell_start": None},
+            {"id": "BOTTOM-RIGHT",  "x": self.screen_w - margin_x, "y": self.screen_h - margin_y, "matched": False, "err": 0, "dwell": 0.0, "dwell_start": None},
         ]
 
-        dwell_mode = True  # Default to 1.0s stare dwell
+        dwell_mode = False  # Default to LIVE SMOOTH FOLLOW so cursor moves immediately!
         dwell_ctrl.reset((cx, cy))
         filter_x.reset()
         filter_y.reset()
@@ -186,7 +193,6 @@ class RegistrationTestPanel:
             canvas[:] = (20, 15, 10)  # Slate dark backdrop
 
             now = time.time()
-            active_x, active_y = cx, cy
             dwell_prog = 0.0
             has_moved = False
 
@@ -198,7 +204,7 @@ class RegistrationTestPanel:
                 smooth_px = filter_x.filter(raw_px, now)
                 smooth_py = filter_y.filter(raw_py, now)
 
-                # 3. Apply 1.0s Stare Dwell vs Live Follow
+                # 3. Apply Selected Mode
                 if dwell_mode:
                     target_cursor, dwell_prog, has_moved = dwell_ctrl.update((smooth_px, smooth_py), now)
                     active_x, active_y = target_cursor
@@ -206,15 +212,15 @@ class RegistrationTestPanel:
                     active_x, active_y = int(smooth_px), int(smooth_py)
                     dwell_prog = 0.0
             else:
-                active_x, active_y = dwell_ctrl.current_cursor
+                active_x, active_y = int(smooth_px), int(smooth_py)
 
             # 1. Header HUD
-            mode_text = "1.0s STARE DWELL LOCK" if dwell_mode else "LIVE SMOOTH FOLLOW"
+            mode_text = "LIVE SMOOTH FOLLOW (Cursor follows eyes)" if not dwell_mode else "1.0s STARE DWELL LOCK"
             matched_count = sum(1 for t in test_targets if t["matched"])
             self._draw_hud(
                 canvas,
                 title="EYEHAND TEST & VERIFICATION PANEL",
-                subtitle=f"Mode: {mode_text} [Press D to switch] | Targets Matched: {matched_count} / {len(test_targets)} | Gaze: ({int(smooth_px)}, {int(smooth_py)})"
+                subtitle=f"Mode: {mode_text} [Press D to switch] | Targets Matched: {matched_count} / {len(test_targets)} | Gaze: ({active_x}, {active_y})"
             )
 
             # 2. Mini camera PIP in top-right
@@ -223,26 +229,28 @@ class RegistrationTestPanel:
             # 3. Draw 9 interactive test target cards
             for tgt in test_targets:
                 tx, ty = tgt["x"], tgt["y"]
-                # Distance to user's active gaze focus
-                gaze_dist = math.hypot(smooth_px - tx, smooth_py - ty)
                 cursor_dist = math.hypot(active_x - tx, active_y - ty)
-                is_hovered = gaze_dist < 100 or cursor_dist < 80
+                is_hovered = cursor_dist < 110
 
-                # Check if user dwelled on or reached this target
-                if is_hovered:
-                    if dwell_mode and (has_moved or dwell_prog > 0.85):
+                # Per-card dwell progress
+                if is_hovered and not tgt["matched"]:
+                    if tgt["dwell_start"] is None:
+                        tgt["dwell_start"] = now
+                    dwell_elapsed = now - tgt["dwell_start"]
+                    tgt["dwell"] = min(1.0, dwell_elapsed / 0.75) # 0.75s stare to match
+                    if tgt["dwell"] >= 1.0:
                         tgt["matched"] = True
                         tgt["err"] = int(cursor_dist)
-                    elif not dwell_mode and gaze_dist < 75:
-                        tgt["matched"] = True
-                        tgt["err"] = int(gaze_dist)
+                else:
+                    tgt["dwell_start"] = None
+                    tgt["dwell"] = 0.0
 
-                self._draw_target_card(canvas, tgt, is_hovered, dwell_prog if is_hovered else 0.0)
+                self._draw_target_card(canvas, tgt, is_hovered, tgt["dwell"])
 
             # 4. Action bar at bottom (drawn BEFORE cursors so cursors are always on top)
             self._draw_action_bar(canvas)
 
-            # 5. Live Gaze Focus Ring (Subtle glowing cyan reticle showing where eyes are fixating)
+            # 5. Live Gaze Focus Ring
             cv2.circle(canvas, (int(smooth_px), int(smooth_py)), 10, (255, 220, 0), 2, cv2.LINE_AA)
             cv2.circle(canvas, (int(smooth_px), int(smooth_py)), 2, (255, 255, 255), -1)
 

@@ -51,9 +51,10 @@ class OneEuroFilter:
 class GazeDwellController:
     """
     Keeps cursor locked at current target.
-    Moves the cursor ONLY when the user fixates on a specific position for 1.0 full second.
+    Moves the cursor when the user fixates on a specific position for 1.0 full second.
+    Uses an ocular-tolerant fixation radius (220px) to absorb natural eye tremor.
     """
-    def __init__(self, stare_duration_s=1.0, stare_radius_px=110, screen_w=1920, screen_h=1080):
+    def __init__(self, stare_duration_s=1.0, stare_radius_px=220, screen_w=1920, screen_h=1080):
         self.stare_duration_s = stare_duration_s
         self.stare_radius_px = stare_radius_px
         self.current_cursor = (screen_w // 2, screen_h // 2)
@@ -66,12 +67,12 @@ class GazeDwellController:
         rx, ry = raw_point
 
         if self.current_cursor is None:
-            self.current_cursor = (rx, ry)
+            self.current_cursor = (int(rx), int(ry))
             return self.current_cursor, 0.0, True
 
         # Distance from active locked cursor
         dist_from_active = math.hypot(rx - self.current_cursor[0], ry - self.current_cursor[1])
-        if dist_from_active < 45:
+        if dist_from_active < 60:
             # Still looking at current cursor position
             self.candidate_center = None
             self.candidate_start_time = None
@@ -93,8 +94,8 @@ class GazeDwellController:
         if dist_to_cand <= self.stare_radius_px:
             # Softly attract candidate center to steady eye drift
             self.candidate_center = (
-                self.candidate_center[0] * 0.88 + rx * 0.12,
-                self.candidate_center[1] * 0.88 + ry * 0.12
+                self.candidate_center[0] * 0.90 + rx * 0.10,
+                self.candidate_center[1] * 0.90 + ry * 0.10
             )
             self.outlier_count = 0
             elapsed = now - self.candidate_start_time
@@ -110,8 +111,8 @@ class GazeDwellController:
             else:
                 return self.current_cursor, self.dwell_progress, False
         else:
-            # Tolerate up to 3 transient outlier frames near boundary
-            if dist_to_cand <= 2.0 * self.stare_radius_px and self.outlier_count < 3:
+            # Tolerate up to 5 transient outlier frames (e.g. blinks or micro-saccades)
+            if dist_to_cand <= 1.8 * self.stare_radius_px and self.outlier_count < 5:
                 self.outlier_count += 1
                 return self.current_cursor, self.dwell_progress, False
 
@@ -129,4 +130,3 @@ class GazeDwellController:
         self.candidate_start_time = None
         self.dwell_progress = 0.0
         self.outlier_count = 0
-

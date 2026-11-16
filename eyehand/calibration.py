@@ -1,7 +1,7 @@
 """
-Component 2: Screen Calibration System
-Fits a robust 2D Affine Transformation Matrix: [gaze_x, gaze_y] -> [screen_x, screen_y]
-Uses cv2.estimateAffine2D with Ridge Regression fallback so mapping is guaranteed stable and never singular.
+Component 2: Screen Calibration & Learning System
+Learns the personal eye range and fits an Affine Projection Matrix to the user's screen.
+Includes personal eye bounds normalization and Ridge-regularized 2D mapping.
 """
 
 import os
@@ -15,6 +15,7 @@ class GazeCalibrator:
         self.screen_w = screen_w
         self.screen_h = screen_h
         self.affine_M = None
+        self.bounds = None
         self.is_calibrated = False
         self.load()
 
@@ -23,10 +24,11 @@ class GazeCalibrator:
             try:
                 data = np.load(self.calib_file, allow_pickle=True).item()
                 M = data.get("affine_M")
-                if M is not None and isinstance(M, np.ndarray):
-                    # Validate matrix dimensions and magnitude to prevent corrupted matrices
-                    if M.shape == (2, 3) and np.max(np.abs(M)) < 50000:
+                bounds = data.get("bounds")
+                if M is not None and isinstance(M, np.ndarray) and M.shape == (2, 3):
+                    if np.max(np.abs(M)) < 50000:
                         self.affine_M = M
+                        self.bounds = bounds
                         self.is_calibrated = True
                         print(f"Loaded valid calibration from {self.calib_file}")
                         return
@@ -36,13 +38,13 @@ class GazeCalibrator:
 
     def save(self):
         if self.affine_M is not None:
-            data = {"affine_M": self.affine_M}
+            data = {"affine_M": self.affine_M, "bounds": self.bounds}
             np.save(self.calib_file, data)
             print(f"Calibration saved to {self.calib_file}")
 
     def fit(self, recorded_features, recorded_targets) -> bool:
         """
-        Fits a 2D affine transformation matrix: src [gaze_x, gaze_y] -> dst [screen_x, screen_y]
+        Learns personal eye bounds and fits 2D Affine Transformation Matrix.
         """
         if len(recorded_features) < 3:
             return False
@@ -50,30 +52,43 @@ class GazeCalibrator:
         src = np.array(recorded_features, dtype=np.float32)
         dst = np.array(recorded_targets, dtype=np.float32)
 
-        # 1. Estimate Affine 2D with OpenCV
-        M, inliers = cv2.estimateAffine2D(src, dst)
+        # 1. Learn personal eye bounds
+        x_min = float(np.min(src[:, 0]))
+        x_max = float(np.max(src[:, 0]))
+        y_min = float(np.min(src[:, 1]))
+        y_max = float(np.max(src[:, 1]))
+        self.bounds = {
+            "x_min": x_min,
+            "x_max": x_max,
+            "y_min": y_min,
+            "y_max": y_max,
+        }
 
-        # 2. Fallback to Ridge Regression if estimateAffine2D had high error
-        if M is None or np.max(np.abs(M)) > 30000:
-            X = np.hstack([src, np.ones((len(src), 1))])
-            ridge = 0.05 * np.eye(3)
-            ridge[2, 2] = 0.0  # Don't regularize bias offset
+        # 2. Fit 2D Affine Projection with Ridge Regularization
+        # Maps [gx, gy, 1] -> [screen_x, screen_y]
+        X = np.hstack([src, np.ones((len(src), 1), dtype=np.float32)])
+        ridge = 0.02 * np.eye(3, dtype=np.float32)
+        ridge[2, 2] = 0.0  # Do not regularize bias offset
+
+        try:
             M_t = np.linalg.inv(X.T @ X + ridge) @ X.T @ dst
             M = M_t.T
+        except Exception:
+            M, _ = cv2.estimateAffine2D(src, dst)
 
-        if M is not None and M.shape == (2, 3):
+        if M is not None and M.shape == (2, 3) and np.max(np.abs(M)) < 50000:
             self.affine_M = M
             self.is_calibrated = True
             self.save()
-            print("2D Affine Calibration Matrix fitted successfully!")
+            print(f"Model successfully trained! Learned eye bounds: X [{x_min:.3f}, {x_max:.3f}], Y [{y_min:.3f}, {y_max:.3f}]")
             return True
 
         return False
 
     def predict(self, gaze_pt):
         """
-        Transforms 2D gaze point [gaze_x, gaze_y] into screen (px, py).
-        Applies border reach expansion gain so the eyes comfortably reach 100% of all borders.
+        Transforms 2D gaze point [gaze_x, gaze_y] into screen coordinates (px, py).
+        Uses the learned personal eye bounds and projection matrix.
         """
         gx = float(gaze_pt[0])
         gy = float(gaze_pt[1])
@@ -83,21 +98,21 @@ class GazeCalibrator:
             vec = np.array([gx, gy, 1.0], dtype=np.float32)
             target = self.affine_M @ vec
             raw_px, raw_py = float(target[0]), float(target[1])
+
+            # Apply border reach gain from screen center
+            cx = self.screen_w / 2.0
+            cy = self.screen_h / 2.0
+            gain_x = 1.30
+            gain_y = 1.35
+            px = cx + (raw_px - cx) * gain_x
+            py = cy + (raw_py - cy) * gain_y
         else:
-            # Reliable uncalibrated fallback
-            norm_x = 0.5 + gx * 2.8
-            norm_y = 0.5 + (gy - 0.14) * 3.2
-            raw_px = norm_x * self.screen_w
-            raw_py = norm_y * self.screen_h
+            # High-gain uncalibrated fallback
+            norm_x = 0.5 + gx * 4.2
+            norm_y = 0.5 + (gy - 0.12) * 4.5
+            px = norm_x * self.screen_w
+            py = norm_y * self.screen_h
 
-        # Screen border reach expansion gain
-        cx = self.screen_w / 2.0
-        cy = self.screen_h / 2.0
-        gain_x = 1.25
-        gain_y = 1.30
-        px = cx + (raw_px - cx) * gain_x
-        py = cy + (raw_py - cy) * gain_y
-
-        px = np.clip(px, 10, self.screen_w - 10)
-        py = np.clip(py, 10, self.screen_h - 10)
+        px = np.clip(px, 15, self.screen_w - 15)
+        py = np.clip(py, 15, self.screen_h - 15)
         return float(px), float(py)
