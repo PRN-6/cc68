@@ -425,7 +425,7 @@ namespace EyeHand
                 ProcessStartInfo psi = new ProcessStartInfo
                 {
                     FileName = edgePath,
-                    Arguments = "--app=\"" + url + "\" --window-position=-32000,-32000 --window-size=1,1 --use-fake-ui-for-media-stream --autoplay-policy=no-user-gesture-required --no-first-run --no-default-browser-check --user-data-dir=\"" + dataDir + "\"",
+                    Arguments = "--headless=new --use-fake-ui-for-media-stream --autoplay-policy=no-user-gesture-required --no-first-run --no-default-browser-check --disable-features=msFirstRunExperience --disable-fre --user-data-dir=\"" + dataDir + "\" \"" + url + "\"",
                     WindowStyle = ProcessWindowStyle.Hidden,
                     CreateNoWindow = true,
                     UseShellExecute = false
@@ -733,6 +733,7 @@ namespace EyeHand
         {
             base.OnPaint(e);
             Graphics g = e.Graphics;
+            g.Clear(Color.Magenta);
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.PixelOffsetMode = PixelOffsetMode.HighQuality;
 
