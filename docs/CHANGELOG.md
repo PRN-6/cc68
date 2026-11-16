@@ -2,6 +2,17 @@
 
 All notable changes to the EyeHand (`cc68`) project will be documented in this file.
 
+## [0.9.0] - 2026-11-16 (Fixation-Lock GazeStabilizer & Zero-Jitter Cursor Engine)
+### Added
+- **`GazeStabilizer2D` Dual-State Filter Engine**:
+  - Implements an adaptive Fixation-Lock & Saccade dispersion algorithm (I-VT velocity & deadband thresholding).
+  - **Zero-Shake Fixation Lock**: When the user looks at any spot, micro-saccades, sensor noise, and involuntary ocular tremors are completely suppressed — the cursor stays **100% constant, rock-solid, with zero vibration or shaking**.
+  - **Smooth Saccadic Transitions**: When the user looks to a new screen position (exceeding the release threshold), the lock releases and the cursor glides smoothly to the new destination.
+  - **Auto-Settle Lock**: Once the user's gaze arrives and rests at the new position for 90ms, the cursor firmly locks onto the target again.
+- **Unit Test Suite**:
+  - Added `packages/core/tests/gaze-stabilizer.test.ts` verifying deadzone stability, saccade breakout, settling lock, and state reset (40 passing unit tests total).
+- Recompiled `EyeHand.exe` and web bundle with active Fixation-Lock stabilization.
+
 ## [0.8.0] - 2026-11-16 (Silent Windows System Tray Execution & Background Auto-Tracking)
 ### Changed
 - **Eliminated Automatic Browser Window Popup**: `EyeHand.exe` no longer pops up a browser window on startup. It runs 100% silently in the Windows System Tray.

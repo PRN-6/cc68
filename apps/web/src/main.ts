@@ -1,4 +1,4 @@
-import { CORE_VERSION, DesktopMouseBridge, OneEuroFilter2D, Vector2 } from '@cc68/core';
+import { CORE_VERSION, DesktopMouseBridge, GazeStabilizer2D, Vector2 } from '@cc68/core';
 import {
   VISION_VERSION,
   VideoStreamManager,
@@ -218,8 +218,15 @@ if (app) {
   const faceLandmarker = new FaceLandmarkerService();
   const handLandmarker = new HandLandmarkerService();
 
-  // One-Euro adaptive filter for jitter-free cursor movements
-  const cursorFilter = new OneEuroFilter2D({ minCutoff: 1.2, beta: 0.015, dCutoff: 1.0 });
+  // Fixation-Lock GazeStabilizer: eliminates tremor/shaking when looking at a spot, and glides smoothly when looking at a new target
+  const gazeStabilizer = new GazeStabilizer2D({
+    deadzoneRadiusPixels: 35,
+    releaseThresholdPixels: 55,
+    fixationVelocityThreshold: 180,
+    settleDurationMs: 90,
+    oneEuroMinCutoff: 0.5,
+    oneEuroBeta: 0.018,
+  });
 
   let simTimer: number | null = null;
   let procTimer: number | null = null;
@@ -264,19 +271,25 @@ if (app) {
     const clampedX = Math.max(0, Math.min(1, normX));
     const clampedY = Math.max(0, Math.min(1, normY));
 
+    const rawTargetX = clampedX * screenDims.width;
+    const rawTargetY = clampedY * screenDims.height;
+
+    // Run through Oculomotor Fixation-Lock Stabilizer:
+    // When looking at a position on screen, it locks constant with zero vibration/shake.
+    // When looking at a new position, it smoothly moves there and locks again.
+    const stabilized = gazeStabilizer.filter(new Vector2(rawTargetX, rawTargetY), timestamp);
+    const finalX = stabilized.point.x;
+    const finalY = stabilized.point.y;
+
     // Update in-viewport reticle
-    updateReticle(clampedX, clampedY, isPinch);
+    updateReticle(finalX / screenDims.width, finalY / screenDims.height, isPinch);
 
     if (isConnectedToNative) {
-      const rawTargetX = clampedX * screenDims.width;
-      const rawTargetY = clampedY * screenDims.height;
-      const filtered = cursorFilter.filter(new Vector2(rawTargetX, rawTargetY), timestamp);
-
       if (!isDispatchingMove) {
         isDispatchingMove = true;
         const syncOs = chkSyncRealMouse ? chkSyncRealMouse.checked : false;
         mouseBridge
-          .moveCursor(filtered.x, filtered.y, { pinch: isPinch, syncOs })
+          .moveCursor(finalX, finalY, { pinch: isPinch, syncOs })
           .finally(() => {
             isDispatchingMove = false;
           });
@@ -524,7 +537,7 @@ if (app) {
     }
 
     if (gazeReticle) gazeReticle.style.display = 'none';
-    cursorFilter.reset();
+    gazeStabilizer.reset();
 
     videoElement.style.display = 'none';
     simCanvas.style.display = 'none';
